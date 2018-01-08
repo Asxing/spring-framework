@@ -511,6 +511,14 @@ public abstract class AbstractApplicationContext extends DefaultResourceLoader
 		return this.applicationListeners;
 	}
 
+	/**
+	 * 1、方法是加锁的，这么做的原因就是避免多线程同时刷新spring上下文
+	 * 2、尽管加锁但是没有在方法前面加synchronized关键字，而是用了对象锁startUpShutdownMonitor
+	 * 	2.1、refresh()方法和close()方法都是用了startUpShutdownMonitor对象锁加锁，保证在调用refresh()方法时无法调用close()方法
+	 * 	2.2、使用对象锁可以减小了同步的范围，只对不能并发的代码块进行加锁，提高了整体代码运行效率
+	 * 3、使用每个子方法定义了整个refresh()方法的流程，使得整个方法流程清晰易懂、可扩展性、可读性、可维护性
+	 *
+	 */
 	@Override
 	public void refresh() throws BeansException, IllegalStateException {
 		synchronized (this.startupShutdownMonitor) {
