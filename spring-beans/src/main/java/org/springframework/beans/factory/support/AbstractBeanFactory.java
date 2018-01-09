@@ -243,10 +243,11 @@ public abstract class AbstractBeanFactory extends FactoryBeanRegistrySupport imp
 		final String beanName = transformedBeanName(name);
 		Object bean;
 
-		// Eagerly check singleton cache for manually registered singletons.
+		// 检查本地的单例缓存是否已经加载过Bean
 		Object sharedInstance = getSingleton(beanName);
 		if (sharedInstance != null && args == null) {
 			if (logger.isDebugEnabled()) {
+				//没有话再次检查earlySingleton缓存是否已经加载过Bean
 				if (isSingletonCurrentlyInCreation(beanName)) {
 					logger.debug("Returning eagerly cached instance of singleton bean '" + beanName +
 							"' that is not fully initialized yet - a consequence of a circular reference");
@@ -261,6 +262,7 @@ public abstract class AbstractBeanFactory extends FactoryBeanRegistrySupport imp
 		else {
 			// Fail if we're already creating this bean instance:
 			// We're assumably within a circular reference.
+			// 判断是否原型中的Bean是否在创建
 			if (isPrototypeCurrentlyInCreation(beanName)) {
 				throw new BeanCurrentlyInCreationException(beanName);
 			}
@@ -293,6 +295,7 @@ public abstract class AbstractBeanFactory extends FactoryBeanRegistrySupport imp
 				checkMergedBeanDefinition(mbd, beanName, args);
 
 				// Guarantee initialization of beans that the current bean depends on.
+				// 就是在这里保证了depends-on依赖的Bean会优先于当前的Bean被加载
 				String[] dependsOn = mbd.getDependsOn();
 				if (dependsOn != null) {
 					for (String dep : dependsOn) {
@@ -309,6 +312,7 @@ public abstract class AbstractBeanFactory extends FactoryBeanRegistrySupport imp
 				if (mbd.isSingleton()) {
 					sharedInstance = getSingleton(beanName, () -> {
 						try {
+							// 这里说一下createBean()方法是AbstractBeanFactory的子类AbstractAutowireBeanFactory的一个方法
 							return createBean(beanName, mbd, args);
 						}
 						catch (BeansException ex) {
@@ -1667,6 +1671,12 @@ public abstract class AbstractBeanFactory extends FactoryBeanRegistrySupport imp
 	 * @see AbstractBeanDefinition#getDestroyMethodName()
 	 * @see org.springframework.beans.factory.config.DestructionAwareBeanPostProcessor
 	 */
+	/**
+	 * 1、Bean 是 DisposableBean 的实现类，此时执行DisposableBean 的接口方法 destory()
+	 * 2、bean 标签中有配置 destory-method 属性，此时执行destory-method 配置指定的方法
+	 * 3、当前Bean对应的BeanFactory中持有DestructionAwareBeanPostProcessor 接口的实现类，
+	 * 	  此时执行 DestructionAwareBeanPostProcessor 的接口方法 postProcessBeforeDestrcution
+	 */
 	protected boolean requiresDestruction(Object bean, RootBeanDefinition mbd) {
 		return (bean.getClass() != NullBean.class &&
 				(DisposableBeanAdapter.hasDestroyMethod(bean, mbd) || (hasDestructionAwareBeanPostProcessors() &&
@@ -1687,11 +1697,13 @@ public abstract class AbstractBeanFactory extends FactoryBeanRegistrySupport imp
 	 */
 	protected void registerDisposableBeanIfNecessary(String beanName, Object bean, RootBeanDefinition mbd) {
 		AccessControlContext acc = (System.getSecurityManager() != null ? getAccessControlContext() : null);
+		// 第一个判断必须不是prototype(原型)的，第二判断给定的Bean在关闭前是否需要销毁
 		if (!mbd.isPrototype() && requiresDestruction(bean, mbd)) {
 			if (mbd.isSingleton()) {
 				// Register a DisposableBean implementation that performs all destruction
 				// work for the given bean: DestructionAwareBeanPostProcessors,
 				// DisposableBean interface, custom destroy method.
+				// 容器销毁的时候，会遍历 disposableBeans，逐一执行销毁方法。
 				registerDisposableBean(beanName,
 						new DisposableBeanAdapter(bean, beanName, mbd, getBeanPostProcessors(), acc));
 			}

@@ -127,6 +127,10 @@ public abstract class AbstractRefreshableApplicationContext extends AbstractAppl
 			closeBeanFactory();
 		}
 		try {
+			/**
+			 * 此处为核心代码，这行点出了DefaultListableBeanFactory这个类，这个类是构造Bean的核心类，
+			 *
+			 */
 			DefaultListableBeanFactory beanFactory = createBeanFactory();
 			beanFactory.setSerializationId(getId());
 			customizeBeanFactory(beanFactory);

@@ -589,8 +589,10 @@ public abstract class AbstractApplicationContext extends DefaultResourceLoader
 	 * active flag as well as performing any initialization of property sources.
 	 */
 	protected void prepareRefresh() {
+		// 设置刷新时间
 		this.startupDate = System.currentTimeMillis();
 		this.closed.set(false);
+		// 将active标识位设置为true
 		this.active.set(true);
 
 		if (logger.isInfoEnabled()) {
@@ -625,6 +627,10 @@ public abstract class AbstractApplicationContext extends DefaultResourceLoader
 	 * @see #getBeanFactory()
 	 */
 	protected ConfigurableListableBeanFactory obtainFreshBeanFactory() {
+		/**
+		 * 这是一个抽象方法，这个抽象方法，有AbstractRefreshApplicationContext和GenericApplicationContext
+		 * 这个两个子类实现了这个方法，此处调用的是AbstractRefreshableApplicationContext中实现的refreshBeanFactory
+		 */
 		refreshBeanFactory();
 		ConfigurableListableBeanFactory beanFactory = getBeanFactory();
 		if (logger.isDebugEnabled()) {
