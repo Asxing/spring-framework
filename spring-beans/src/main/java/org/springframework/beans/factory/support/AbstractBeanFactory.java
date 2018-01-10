@@ -295,7 +295,7 @@ public abstract class AbstractBeanFactory extends FactoryBeanRegistrySupport imp
 				checkMergedBeanDefinition(mbd, beanName, args);
 
 				// Guarantee initialization of beans that the current bean depends on.
-				// 就是在这里保证了depends-on依赖的Bean会优先于当前的Bean被加载
+				// 就是在这里保证了depends-on 依赖的Bean会优先于当前的Bean被加载
 				String[] dependsOn = mbd.getDependsOn();
 				if (dependsOn != null) {
 					for (String dep : dependsOn) {
@@ -309,6 +309,7 @@ public abstract class AbstractBeanFactory extends FactoryBeanRegistrySupport imp
 				}
 
 				// Create bean instance.
+				// 此处为单例Bean创建，会限制性getSingleton()尝试从缓存中获取，若存在就返回，否则才创建
 				if (mbd.isSingleton()) {
 					sharedInstance = getSingleton(beanName, () -> {
 						try {
@@ -323,19 +324,24 @@ public abstract class AbstractBeanFactory extends FactoryBeanRegistrySupport imp
 							throw ex;
 						}
 					});
+					// 首先是个Bean且被实例化出来成为一个对象之后才能调用getObejct()方法
 					bean = getObjectForBeanInstance(sharedInstance, name, beanName, mbd);
 				}
 
 				else if (mbd.isPrototype()) {
 					// It's a prototype -> create a new instance.
+					// 此处为原型 Bean 实例化，主要区别就是直接创建
 					Object prototypeInstance = null;
 					try {
+						// 把当前的beanName设置到ThreadLocal中去，其目的就是保证多线程不会同时创建同一个Bean
 						beforePrototypeCreation(beanName);
 						prototypeInstance = createBean(beanName, mbd, args);
 					}
 					finally {
+						// 把当前Bean移除一下，这样其他线程就可以创建Bean了
 						afterPrototypeCreation(beanName);
 					}
+					// 如果Bean是FactoryBean的实现类，则调用getObject()方法获取真正的对象
 					bean = getObjectForBeanInstance(prototypeInstance, name, beanName, mbd);
 				}
 
@@ -1618,6 +1624,7 @@ public abstract class AbstractBeanFactory extends FactoryBeanRegistrySupport imp
 			Object beanInstance, String name, String beanName, @Nullable RootBeanDefinition mbd) {
 
 		// Don't let calling code try to dereference the factory if the bean isn't a factory.
+		// 判断是以“&”开头且不是FactoryBean的实现类，不满足则抛异常，因为beanName以“&”开头是FactoryBean的实现类bean定义的一个特征，若是空则直接返回回去
 		if (BeanFactoryUtils.isFactoryDereference(name)) {
 			if (beanInstance instanceof NullBean) {
 				return beanInstance;
@@ -1646,6 +1653,7 @@ public abstract class AbstractBeanFactory extends FactoryBeanRegistrySupport imp
 				mbd = getMergedLocalBeanDefinition(beanName);
 			}
 			boolean synthetic = (mbd != null && mbd.isSynthetic());
+			// 调用getObject()方法实现个性化定制Bean
 			object = getObjectFromFactoryBean(factory, beanName, !synthetic);
 		}
 		return object;

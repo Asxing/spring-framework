@@ -100,6 +100,11 @@ public class BeanDefinitionReaderUtils {
 	 * @throws BeanDefinitionStoreException if no unique name can be generated
 	 * for the given bean definition
 	 */
+	/**
+	 * 假如是 innerBean（比如 Spring AOP 产生的 Bean），使用【类全路径 +#+ 对象 HashCode 的 16 进制】的格式来命名 Bean
+	 * 假如不是 innerBean，使用【类全路径 +#+ 数字】的格式来命名 Bean，其中数字指的是，
+	 * 		同一个 Bean 出现 1 次，只要该 Bean 没有 id，就从 0 开始依次向上累加，比如 a.b.c#0、a.b.c#1、a.b.c#2
+	 */
 	public static String generateBeanName(
 			BeanDefinition definition, BeanDefinitionRegistry registry, boolean isInnerBean)
 			throws BeanDefinitionStoreException {

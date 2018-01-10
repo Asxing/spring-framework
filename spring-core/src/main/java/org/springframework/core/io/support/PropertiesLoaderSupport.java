@@ -144,6 +144,7 @@ public abstract class PropertiesLoaderSupport {
 	 * loaded properties and properties set on this FactoryBean.
 	 */
 	protected Properties mergeProperties() throws IOException {
+		// result 会随着之后的代码传入，properties文件中的数据会写入reslult中
 		Properties result = new Properties();
 
 		if (this.localOverride) {
@@ -159,6 +160,7 @@ public abstract class PropertiesLoaderSupport {
 
 		if (!this.localOverride) {
 			// Load properties from file afterwards, to let those properties override.
+			// 加载哦哦，关键滴不行
 			loadProperties(result);
 		}
 

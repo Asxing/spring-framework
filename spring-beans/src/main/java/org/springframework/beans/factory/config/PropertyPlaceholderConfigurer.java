@@ -221,6 +221,7 @@ public class PropertyPlaceholderConfigurer extends PlaceholderConfigurerSupport 
 	protected void processProperties(ConfigurableListableBeanFactory beanFactoryToProcess, Properties props)
 			throws BeansException {
 
+		// 这是一个持有.properties文件配置的字符串解析器
 		StringValueResolver valueResolver = new PlaceholderResolvingStringValueResolver(props);
 		doProcessProperties(beanFactoryToProcess, valueResolver);
 	}
@@ -241,6 +242,7 @@ public class PropertyPlaceholderConfigurer extends PlaceholderConfigurerSupport 
 		@Override
 		@Nullable
 		public String resolveStringValue(String strVal) throws BeansException {
+			// 替换占位符，位于PropertyPlaceholderHelper类中
 			String resolved = this.helper.replacePlaceholders(strVal, this.resolver);
 			if (trimValues) {
 				resolved = resolved.trim();

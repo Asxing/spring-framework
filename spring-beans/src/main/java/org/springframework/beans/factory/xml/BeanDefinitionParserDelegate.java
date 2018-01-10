@@ -305,6 +305,7 @@ public class BeanDefinitionParserDelegate {
 	 * @see #getDefaults()
 	 */
 	public void initDefaults(Element root, @Nullable BeanDefinitionParserDelegate parent) {
+		// 关键点
 		populateDefaults(this.defaults, (parent != null ? parent.defaults : null), root);
 		this.readerContext.fireDefaultsRegistered(this.defaults);
 	}
@@ -318,6 +319,8 @@ public class BeanDefinitionParserDelegate {
 	 * @param parentDefaults the parent BeanDefinitionParserDelegate (if any) defaults to fall back to
 	 * @param root the root element of the current bean definition document (or nested beans element)
 	 */
+	// 此处将<beans>标签下的default-lazy-init,default_merge,default_autowire,default-dependency-check,default-autowire-candidates,
+	// defalult-init-method,default-destory-method这几个属性取出来，设置到DocumentDefaultsDefinition 即defaults中
 	protected void populateDefaults(DocumentDefaultsDefinition defaults, @Nullable DocumentDefaultsDefinition parentDefaults, Element root) {
 		String lazyInit = root.getAttribute(DEFAULT_LAZY_INIT_ATTRIBUTE);
 		if (DEFAULT_VALUE.equals(lazyInit)) {
@@ -412,6 +415,10 @@ public class BeanDefinitionParserDelegate {
 	 */
 	@Nullable
 	public BeanDefinitionHolder parseBeanDefinitionElement(Element ele, @Nullable BeanDefinition containingBean) {
+		// 默认的BeanName就是bean标签重定义的id
+		// <bean> 标签中可以定义 name 属性，一个 bean 可以有多个别名（alias），
+		// 都定义在 name 属性中，不同的别名以 ",;" 分割，
+		// 假如 beanId 未定义，那么就以 name 属性中的第一个别名作为 beanName
 		String id = ele.getAttribute(ID_ATTRIBUTE);
 		String nameAttr = ele.getAttribute(NAME_ATTRIBUTE);
 
@@ -431,10 +438,17 @@ public class BeanDefinitionParserDelegate {
 		}
 
 		if (containingBean == null) {
+			//确保BeanName的唯一性，方法就知道，BeanName 与 Bean 别名都会放在 Set<String> 中，
+			// 然后每次加载 Bean 定义的时候都会去这个 Set<String > 中检查
+			// 当前 BeanName 和 Bean 别名是否存在，如果存在就报错。
 			checkNameUniqueness(beanName, aliases, ele);
 		}
 
 		AbstractBeanDefinition beanDefinition = parseBeanDefinitionElement(ele, beanName, containingBean);
+		//当 bean 的 id 未定义时，即 beanName 为空，进入第 452 行的 if 判断。
+		// containingBean 可以看一下，这里是由方法传入的，是一个 null 值，因此进入第 456 行的判断，
+		// 即 beanName 由第 456 行的方法生成，看一下生成方式，代码最终要追踪到
+		// BeanDefinitionReaderUtils 的 generateBeanName 方法
 		if (beanDefinition != null) {
 			if (!StringUtils.hasText(beanName)) {
 				try {
@@ -500,29 +514,55 @@ public class BeanDefinitionParserDelegate {
 	public AbstractBeanDefinition parseBeanDefinitionElement(
 			Element ele, String beanName, @Nullable BeanDefinition containingBean) {
 
+		// ParseState 是一个基于栈的简单结构，在解析的流程中用于追踪逻辑上的位置，
+		// 里面存放的是 Entry 接口。Entry 接口有各种实现类比如 AdviceEntry、
+		// AdvisorEntry、BeanEntry、PropertyEntry 等，每一步操作开始将
+		// 一个 Entry 推送至栈顶，每一步操作结束将 Entry 从栈顶弹出，
+		// 这里将一个 BeanEntry 推送至栈顶，标识解析 Bean 定义开始
 		this.parseState.push(new BeanEntry(beanName));
 
+		// 用于获取Bean对应的类路径
 		String className = null;
 		if (ele.hasAttribute(CLASS_ATTRIBUTE)) {
 			className = ele.getAttribute(CLASS_ATTRIBUTE).trim();
 		}
+		// 用于解析 <bean> 标签中的 parent 属性
 		String parent = null;
 		if (ele.hasAttribute(PARENT_ATTRIBUTE)) {
 			parent = ele.getAttribute(PARENT_ATTRIBUTE);
 		}
 
 		try {
+			// 根据 Bean 对应的类路径以及 parent，生成一个 AbstractBeanDefinition，
+			// AbstractBeanDefinition 是一个抽象类，生成出来的具体实例为 GenericBeanDefinition
 			AbstractBeanDefinition bd = createBeanDefinition(className, parent);
 
+			// 用于解析 Bean 定义的属性的，包括 scope、sington、abstract、lazy-init、
+			// autowire、dependency-check、depends-on、autowire-candidate、primary、
+			// init-method、destory-method、factory-method、factory-bean，createHelper
+			// 部分说了这个方法会创建一个名为 defaults 的 DocumentDefaultsDefinition，
+			// 像 lazy-init、autowire-candidate、init-method、destory-method
+			// 未定义时都会尝试从 DocumentDefaultsDefinition 中获取
 			parseBeanDefinitionAttributes(ele, beanName, containingBean, bd);
+			// 用于设置Bean描述
 			bd.setDescription(DomUtils.getChildElementValueByTagName(ele, DESCRIPTION_ELEMENT));
 
+			// parseMetaElements 用于解析 META 元素
 			parseMetaElements(ele, bd);
+			// parseLookupOverrideSubElements 用于解析 <bean> 标签下的 < lookup-method > 标签
 			parseLookupOverrideSubElements(ele, bd.getMethodOverrides());
+			// parseReplacedMethodSubElements 用于解析 <bean> 标签下的 < replaced-method > 标签，
+			// 不过这个和 < lookup-method > 标签好像不太常用
 			parseReplacedMethodSubElements(ele, bd.getMethodOverrides());
 
+			// parseConstructorArgElements 用于解析 <bean> 标签下的 < constructor-arg > 标签，
+			// <constructor-arg > 标签用于实现构造函数注入 Bean 属性
 			parseConstructorArgElements(ele, bd);
+			// parsePropertyElements 用于解析 <bean> 标签下的 < property > 标签，
+			// <property > 标签是最常见的 Bean 属性注入的方式
 			parsePropertyElements(ele, bd);
+			// parseQualifierElements 用于解析 <bean> 标签下的 < qualifier > 标签，
+			// 使用 < qualifier > 标签也是 Spring 属性注入的一种方式，不过不太常用
 			parseQualifierElements(ele, bd);
 
 			bd.setResource(this.readerContext.getResource());
@@ -1354,15 +1394,25 @@ public class BeanDefinitionParserDelegate {
 
 	@Nullable
 	public BeanDefinition parseCustomElement(Element ele, @Nullable BeanDefinition containingBd) {
+		// 从 <aop:config>这个Node中拿到Namespace="http://www.springframework.org/schema/aop"
 		String namespaceUri = getNamespaceURI(ele);
 		if (namespaceUri == null) {
 			return null;
 		}
+		/**
+		 * 根据这个Namespace获取对应的NamespaceHandle即Namespace处理器，具体到aop这个Namespace的NamespaceHandler是org.springframework.aop.config.AopNamespaceHandler类
+		 * 具体到AopNamespaceHandler里面，有几个Parser，适用于具体标签转换的，分别是：
+		 * config-->ConfigBeanDefinitionParser
+		 * aspectj-autoproxy-->AspectJAutoProxyBeanDefinitionParser
+		 * scoped-proxy-->ScopedProxyBeanDefinitionDecorator
+		 * spring-configured-->SpringConfiguredBeanDefinitionParser
+		 */
 		NamespaceHandler handler = this.readerContext.getNamespaceHandlerResolver().resolve(namespaceUri);
 		if (handler == null) {
 			error("Unable to locate Spring NamespaceHandler for XML schema namespace [" + namespaceUri + "]", ele);
 			return null;
 		}
+		// 解析<aop:config>内容
 		return handler.parse(ele, new ParserContext(this.readerContext, this, containingBd));
 	}
 

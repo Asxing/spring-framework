@@ -136,6 +136,7 @@ class PostProcessorRegistrationDelegate {
 
 		// Do not initialize FactoryBeans here: We need to leave all regular beans
 		// uninitialized to let the bean factory post-processors apply to them!
+		// 获取的是 beanDefinitionMap 中的Bean，即用户自定义的Bean
 		String[] postProcessorNames =
 				beanFactory.getBeanNamesForType(BeanFactoryPostProcessor.class, true, false);
 
@@ -149,12 +150,17 @@ class PostProcessorRegistrationDelegate {
 				// skip - already processed in first phase above
 			}
 			else if (beanFactory.isTypeMatch(ppName, PriorityOrdered.class)) {
+				// 如果BeanFactoryPostProcessor实现了 PriorityOrdered 接口(PriorityOrdered 接口是Oredered的子接口，没有自己的接口方法定义，只是做一个标记
+				// 表示调用优先级高于Ordered接口的子接口)，是优先级最高的调用，调用的顺序是按照方法getOrder()的实现，对返回int值从小到大进行排序，进行调用
 				priorityOrderedPostProcessors.add(beanFactory.getBean(ppName, BeanFactoryPostProcessor.class));
 			}
 			else if (beanFactory.isTypeMatch(ppName, Ordered.class)) {
+				// 若BeanFactoryPostProcessor实现了Ordered接口，是优先级此高的调用，将在所有实现PriorityOrdered接口的BeanFactoryPostProcessor调用完毕之后
+				// 根据 getOrder()的实现对返回的Int值从小到大的排序，进行调用
 				orderedPostProcessorNames.add(ppName);
 			}
 			else {
+				// 不实现Ordered接口的BeanFactoryPostProcessor，则在上面的都调用完毕后，调用的顺序为Bean定义的顺序
 				nonOrderedPostProcessorNames.add(ppName);
 			}
 		}

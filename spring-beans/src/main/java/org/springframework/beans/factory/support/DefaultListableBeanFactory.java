@@ -166,6 +166,8 @@ public class DefaultListableBeanFactory extends AbstractAutowireCapableBeanFacto
 	private final Map<Class<?>, String[]> singletonBeanNamesByType = new ConcurrentHashMap<>(64);
 
 	/** List of bean definition names, in registration order */
+	// DefaultListableBeanFactory 会先遍历 beanDefinitionNames，从beanDefinitionMap中拿到对应的BeanDefinition，最终转为具体的Bean对象
+	// BeanDefinition 本身是一个接口，AbstractBeanDefinition 这个抽象类存储了Bean的属性
 	private volatile List<String> beanDefinitionNames = new ArrayList<>(256);
 
 	/** List of names of manually registered singletons, in registration order */
@@ -819,7 +821,7 @@ public class DefaultListableBeanFactory extends AbstractAutowireCapableBeanFacto
 		}
 
 		BeanDefinition oldBeanDefinition;
-
+		// 添加映射，key为BeanName，Value为Bean定义
 		oldBeanDefinition = this.beanDefinitionMap.get(beanName);
 		if (oldBeanDefinition != null) {
 			if (!isAllowBeanDefinitionOverriding()) {
@@ -876,6 +878,7 @@ public class DefaultListableBeanFactory extends AbstractAutowireCapableBeanFacto
 			this.frozenBeanDefinitionNames = null;
 		}
 
+		// 重置一下所有本地缓存的Bean定义
 		if (oldBeanDefinition != null || containsSingleton(beanName)) {
 			resetBeanDefinition(beanName);
 		}
@@ -1063,6 +1066,7 @@ public class DefaultListableBeanFactory extends AbstractAutowireCapableBeanFacto
 			@Nullable Set<String> autowiredBeanNames, @Nullable TypeConverter typeConverter) throws BeansException {
 
 		descriptor.initParameterNameDiscovery(getParameterNameDiscoverer());
+		// 这里判断自动装配的属性是 Optional、ObjectFactory、javaxInjectProviderClass
 		if (Optional.class == descriptor.getDependencyType()) {
 			return createOptionalDependency(descriptor, requestingBeanName);
 		}
@@ -1077,6 +1081,7 @@ public class DefaultListableBeanFactory extends AbstractAutowireCapableBeanFacto
 			Object result = getAutowireCandidateResolver().getLazyResolutionProxyIfNecessary(
 					descriptor, requestingBeanName);
 			if (result == null) {
+				// 这里看一下这行代码
 				result = doResolveDependency(descriptor, requestingBeanName, autowiredBeanNames, typeConverter);
 			}
 			return result;
@@ -1113,8 +1118,10 @@ public class DefaultListableBeanFactory extends AbstractAutowireCapableBeanFacto
 				return multipleBeans;
 			}
 
+			// 获取自动装配的候选者
 			Map<String, Object> matchingBeans = findAutowireCandidates(beanName, type, descriptor);
 			if (matchingBeans.isEmpty()) {
+				// 如果拿到的Map是空且属性必须注入，则抛异常
 				if (isRequired(descriptor)) {
 					raiseNoMatchingBeanFound(type, descriptor.getResolvableType(), descriptor);
 				}
@@ -1124,6 +1131,7 @@ public class DefaultListableBeanFactory extends AbstractAutowireCapableBeanFacto
 			String autowiredBeanName;
 			Object instanceCandidate;
 
+			// 如果拿到的Map中有多个候选对象
 			if (matchingBeans.size() > 1) {
 				autowiredBeanName = determineAutowireCandidate(matchingBeans, descriptor);
 				if (autowiredBeanName == null) {
@@ -1288,9 +1296,11 @@ public class DefaultListableBeanFactory extends AbstractAutowireCapableBeanFacto
 	protected Map<String, Object> findAutowireCandidates(
 			@Nullable String beanName, Class<?> requiredType, DependencyDescriptor descriptor) {
 
+		// 获取候选者Bean的名称，通过DefalultListableBeanFactory的getBeanNamesForType方法，找一下所有的Bean定义中指定Type的实现类或者子类
 		String[] candidateNames = BeanFactoryUtils.beanNamesForTypeIncludingAncestors(
 				this, requiredType, true, descriptor.isEager());
 		Map<String, Object> result = new LinkedHashMap<>(candidateNames.length);
+		//判断自动装配的类型是不是要自动装配的纠正类型
 		for (Class<?> autowiringType : this.resolvableDependencies.keySet()) {
 			if (autowiringType.isAssignableFrom(requiredType)) {
 				Object autowiringValue = this.resolvableDependencies.get(autowiringType);
@@ -1301,6 +1311,7 @@ public class DefaultListableBeanFactory extends AbstractAutowireCapableBeanFacto
 				}
 			}
 		}
+		// 逐个判断查找beanName对应的BeanDefinition，判断一下是不是自动装配候选者，默认都是的，如果<bean>的autowire-candidate属性设置为false
 		for (String candidate : candidateNames) {
 			if (!isSelfReference(beanName, candidate) && isAutowireCandidate(candidate, descriptor)) {
 				addCandidateEntry(result, candidate, descriptor, requiredType);
@@ -1326,6 +1337,7 @@ public class DefaultListableBeanFactory extends AbstractAutowireCapableBeanFacto
 				}
 			}
 		}
+		// 这样拿到所有待装配对象的实现类或者子类的候选者，组成一个Map，key为beanName，value为具体的Bean
 		return result;
 	}
 

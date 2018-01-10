@@ -301,6 +301,7 @@ public abstract class AbstractAutoProxyCreator extends ProxyProcessorSupport
 		if (bean != null) {
 			Object cacheKey = getCacheKey(bean.getClass(), beanName);
 			if (!this.earlyProxyReferences.contains(cacheKey)) {
+				// 关键点
 				return wrapIfNecessary(bean, beanName, cacheKey);
 			}
 		}
@@ -349,9 +350,16 @@ public abstract class AbstractAutoProxyCreator extends ProxyProcessorSupport
 		}
 
 		// Create proxy if we have advice.
+		/**
+		 * 首先我们要思考的第一个问题是：哪些目标对象需要生成代理？
+		 * 因为配置文件里面有很多 Bean，肯定不能对每个 Bean 都生成代理，因此需要一套规则判断 Bean
+		 * 是不是需要生成代理，这套规则就是 getAdvicesAndAdvisorsForBean：
+		 */
 		Object[] specificInterceptors = getAdvicesAndAdvisorsForBean(bean.getClass(), beanName, null);
+		// 只要不为空
 		if (specificInterceptors != DO_NOT_PROXY) {
 			this.advisedBeans.put(cacheKey, Boolean.TRUE);
+			// 那就赶紧创建呗
 			Object proxy = createProxy(
 					bean.getClass(), beanName, specificInterceptors, new SingletonTargetSource(bean));
 			this.proxyTypes.put(cacheKey, proxy.getClass());
@@ -448,9 +456,12 @@ public abstract class AbstractAutoProxyCreator extends ProxyProcessorSupport
 			AutoProxyUtils.exposeTargetClass((ConfigurableListableBeanFactory) this.beanFactory, beanName, beanClass);
 		}
 
+		// 代理工厂走一走，提供了简单的方式使用代码获取和配置AOP代理
 		ProxyFactory proxyFactory = new ProxyFactory();
 		proxyFactory.copyFrom(this);
 
+		// 判断<aop:config>这个节点中proxy-target-class=“false”或者proxy-target-class不配置，既不是用CGLIB生成代理
+		// 如果满足条件，进判断，获取当前Bean实现的所有接口，将这些接口Class对象都添加到ProxyFactory中
 		if (!proxyFactory.isProxyTargetClass()) {
 			if (shouldProxyTargetClass(beanClass, beanName)) {
 				proxyFactory.setProxyTargetClass(true);
@@ -460,6 +471,7 @@ public abstract class AbstractAutoProxyCreator extends ProxyProcessorSupport
 			}
 		}
 
+		// 向ProxyFactory中添加一些参数
 		Advisor[] advisors = buildAdvisors(beanName, specificInterceptors);
 		proxyFactory.addAdvisors(advisors);
 		proxyFactory.setTargetSource(targetSource);

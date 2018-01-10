@@ -1331,11 +1331,13 @@ public abstract class AbstractAutowireCapableBeanFactory extends AbstractBeanFac
 			MutablePropertyValues newPvs = new MutablePropertyValues(pvs);
 
 			// Add property values based on autowire by name if applicable.
+			// 此处判断是否byName形式，是，就执行byName自动装配代码，
 			if (mbd.getResolvedAutowireMode() == RootBeanDefinition.AUTOWIRE_BY_NAME) {
 				autowireByName(beanName, mbd, bw, newPvs);
 			}
 
 			// Add property values based on autowire by type if applicable.
+			// 此处判断是否byType形式，是，就执行byType自动装配代码，
 			if (mbd.getResolvedAutowireMode() == RootBeanDefinition.AUTOWIRE_BY_TYPE) {
 				autowireByType(beanName, mbd, bw, newPvs);
 			}
@@ -1384,12 +1386,14 @@ public abstract class AbstractAutowireCapableBeanFactory extends AbstractBeanFac
 	 */
 	protected void autowireByName(
 			String beanName, AbstractBeanDefinition mbd, BeanWrapper bw, MutablePropertyValues pvs) {
-
+		// 找到Bean中不是简单属性的属性，就是指属性是对象类型的属性，但也不是所有的对象类型都会被找到，具体见BeanUtils.isSimpleProperty
 		String[] propertyNames = unsatisfiedNonSimpleProperties(mbd, bw);
+		// 遍历所有被找到的属性，如果Bean定义中包含了属性名，那么先实例化该属性名对应的Bean
 		for (String propertyName : propertyNames) {
 			if (containsBean(propertyName)) {
 				Object bean = getBean(propertyName);
 				pvs.add(propertyName, bean);
+				// 注册一下当前Bean的依赖Bean，用于在某个Bean被销毁前先将其依赖的Bean销毁
 				registerDependentBean(propertyName, beanName);
 				if (logger.isDebugEnabled()) {
 					logger.debug("Added autowiring by name from bean name '" + beanName +
@@ -1425,7 +1429,9 @@ public abstract class AbstractAutowireCapableBeanFactory extends AbstractBeanFac
 		}
 
 		Set<String> autowiredBeanNames = new LinkedHashSet<>(4);
+		// 找到Bean中属性是对象类型的
 		String[] propertyNames = unsatisfiedNonSimpleProperties(mbd, bw);
+		// 遍历PropertyName 对应的属性描述
 		for (String propertyName : propertyNames) {
 			try {
 				PropertyDescriptor pd = bw.getPropertyDescriptor(propertyName);
@@ -1436,6 +1442,7 @@ public abstract class AbstractAutowireCapableBeanFactory extends AbstractBeanFac
 					// Do not allow eager init for type matching in case of a prioritized post-processor.
 					boolean eager = !PriorityOrdered.class.isInstance(bw.getWrappedInstance());
 					DependencyDescriptor desc = new AutowireByTypeDependencyDescriptor(methodParam, eager);
+					// 主要的实现，这个方法是AbstractAutowireCapableBeanFactory类的实现类DefaultListableBeanFactory中
 					Object autowiredArgument = resolveDependency(desc, beanName, autowiredBeanNames, converter);
 					if (autowiredArgument != null) {
 						pvs.add(propertyName, autowiredArgument);
@@ -1719,7 +1726,7 @@ public abstract class AbstractAutowireCapableBeanFactory extends AbstractBeanFac
 
 		Object wrappedBean = bean;
 		if (mbd == null || !mbd.isSynthetic()) {
-			// before
+			// 初始化之前  before
 			wrappedBean = applyBeanPostProcessorsBeforeInitialization(wrappedBean, beanName);
 		}
 
@@ -1733,7 +1740,7 @@ public abstract class AbstractAutowireCapableBeanFactory extends AbstractBeanFac
 					beanName, "Invocation of init method failed", ex);
 		}
 		if (mbd == null || !mbd.isSynthetic()) {
-			// 同样遍历 BeanPostProcessor 会调用 BeanPostProcessor
+			// 初始化之后 同样遍历 BeanPostProcessor 会调用 BeanPostProcessor
 			wrappedBean = applyBeanPostProcessorsAfterInitialization(wrappedBean, beanName);
 		}
 

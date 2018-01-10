@@ -326,12 +326,14 @@ public class XmlBeanDefinitionReader extends AbstractBeanDefinitionReader {
 					"Detected cyclic loading of " + encodedResource + " - check your import definitions!");
 		}
 		try {
+			// 根据xml文件获取输入字节流
 			InputStream inputStream = encodedResource.getResource().getInputStream();
 			try {
 				InputSource inputSource = new InputSource(inputStream);
 				if (encodedResource.getEncoding() != null) {
 					inputSource.setEncoding(encodedResource.getEncoding());
 				}
+				// 进入关键
 				return doLoadBeanDefinitions(inputSource, encodedResource.getResource());
 			}
 			finally {
@@ -387,7 +389,14 @@ public class XmlBeanDefinitionReader extends AbstractBeanDefinitionReader {
 	protected int doLoadBeanDefinitions(InputSource inputSource, Resource resource)
 			throws BeanDefinitionStoreException {
 		try {
+			// 进入验证模式，最终出来的是DetectMode，DetectMode的意思是XML文件的验证模式由XML文件本身决定，
+			// 如果是DTD那就是DTD验证，如果是XSD那就是XSD验证
+			// 这两行作用是通过DOM得到org.w3c.dom.Document对象，Document 将XML文件看成一棵树，Document是对这棵树的描述
+			// xml 解析成 Document，这里的解析使用的是 JDK 自带的 DocumentBuilder，
+			// DocumentBuilder 处理 xml 文件输入流，发现两个 <bean> 中定义的 id 重复即
+			// 会抛出 XNIException 异常，最终将导致 Spring 容器启动失败，因此就是Spring不允许两个Bean定义相同的id
 			Document doc = doLoadDocument(inputSource, resource);
+			// 继续加载Bean定义的流程
 			return registerBeanDefinitions(doc, resource);
 		}
 		catch (BeanDefinitionStoreException ex) {
@@ -502,8 +511,10 @@ public class XmlBeanDefinitionReader extends AbstractBeanDefinitionReader {
 	 * @see BeanDefinitionDocumentReader#registerBeanDefinitions
 	 */
 	public int registerBeanDefinitions(Document doc, Resource resource) throws BeanDefinitionStoreException {
+		//因为是每个XML文件执行一次registerBeandefinitions方法注册Bean定义，因此整个方法的返回值表示是当前XML里面一共注册了多少个Bean
 		BeanDefinitionDocumentReader documentReader = createBeanDefinitionDocumentReader();
 		int countBefore = getRegistry().getBeanDefinitionCount();
+		// 注册Bean定义
 		documentReader.registerBeanDefinitions(doc, createReaderContext(resource));
 		return getRegistry().getBeanDefinitionCount() - countBefore;
 	}

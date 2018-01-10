@@ -143,7 +143,11 @@ public class XmlReaderContext extends ReaderContext {
 	 * @see BeanDefinitionRegistry#registerBeanDefinition
 	 */
 	public String registerWithGeneratedName(BeanDefinition beanDefinition) {
+		// 获取注册的名字BeanName和bean的注册差不多，使用的是Class全路径+"#"+全局计数器的方式，其中的Class全路径为
+		// org.springframework.aop.aspectj.AspectJPointcutAdvisor，依次类推，
+		// 每一个 BeanName 应当为 org.springframework.aop.aspectj.AspectJPointcutAdvisor#0、org.springframework.aop.aspectj.AspectJPointcutAdvisor#1、org.springframework.aop.aspectj.AspectJPointcutAdvisor#2
 		String generatedName = generateBeanName(beanDefinition);
+		//向DefaultListableBeanFactory中注册，BeanName已经有了，剩下就是Bean定义。
 		getRegistry().registerBeanDefinition(generatedName, beanDefinition);
 		return generatedName;
 	}

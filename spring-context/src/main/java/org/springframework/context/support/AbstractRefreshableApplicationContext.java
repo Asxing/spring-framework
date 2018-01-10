@@ -130,10 +130,14 @@ public abstract class AbstractRefreshableApplicationContext extends AbstractAppl
 			/**
 			 * 此处为核心代码，这行点出了DefaultListableBeanFactory这个类，这个类是构造Bean的核心类，
 			 *
+			 * 对于此处使用DefaultListableBeanFactory而不是它的接口BeanFactory，因为Bean定义存储在Map< String, BeanDefinition>中，
+			 * 这个Map的位置就是在DefaultListableBeanFactory里，因此这里直接获取DefalultListableBeanFactory并作为参数层层向后传，
+			 * 加载完Bean定义后直接向Map< String, BeanDefinition>里put键值对
 			 */
 			DefaultListableBeanFactory beanFactory = createBeanFactory();
 			beanFactory.setSerializationId(getId());
 			customizeBeanFactory(beanFactory);
+			// 传入当前获取的BeanFactory，准备加载Bean定义
 			loadBeanDefinitions(beanFactory);
 			synchronized (this.beanFactoryMonitor) {
 				this.beanFactory = beanFactory;
