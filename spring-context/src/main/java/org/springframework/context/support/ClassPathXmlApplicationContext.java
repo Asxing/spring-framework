@@ -52,7 +52,7 @@ import org.springframework.util.Assert;
 public class ClassPathXmlApplicationContext extends AbstractXmlApplicationContext {
 
 	@Nullable
-	private Resource[] configResources;
+	private Resource[]  configResources;
 
 
 	/**
@@ -207,7 +207,7 @@ public class ClassPathXmlApplicationContext extends AbstractXmlApplicationContex
 
 	@Override
 	@Nullable
-	protected Resource[] getConfigResources() {
+	protected Resource[]  getConfigResources() {
 		return this.configResources;
 	}
 

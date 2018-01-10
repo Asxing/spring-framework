@@ -525,7 +525,11 @@ public abstract class AbstractApplicationContext extends DefaultResourceLoader
 			// Prepare this context for refreshing.
 			prepareRefresh();
 
-			// 通知子类刷新内部工厂Bean
+			// 通知子类刷新内部工厂Bean---111111
+			/**
+			 * 1、xml解析
+			 * 2、annotation的支持
+			 */
 			ConfigurableListableBeanFactory beanFactory = obtainFreshBeanFactory();
 
 			// 在上下文中准备Bean工厂

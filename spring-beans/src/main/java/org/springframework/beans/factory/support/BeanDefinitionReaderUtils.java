@@ -54,6 +54,7 @@ public class BeanDefinitionReaderUtils {
 	 * @return the bean definition
 	 * @throws ClassNotFoundException if the bean class could not be loaded
 	 */
+	// 创建了一个BeanDefinition对象
 	public static AbstractBeanDefinition createBeanDefinition(
 			@Nullable String parentName, @Nullable String className, @Nullable ClassLoader classLoader) throws ClassNotFoundException {
 
@@ -61,6 +62,7 @@ public class BeanDefinitionReaderUtils {
 		bd.setParentName(parentName);
 		if (className != null) {
 			if (classLoader != null) {
+				// 根据类的名称反射出来
 				bd.setBeanClass(ClassUtils.forName(className, classLoader));
 			}
 			else {

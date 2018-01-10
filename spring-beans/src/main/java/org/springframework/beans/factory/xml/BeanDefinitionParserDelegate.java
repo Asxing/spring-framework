@@ -419,9 +419,12 @@ public class BeanDefinitionParserDelegate {
 		// <bean> 标签中可以定义 name 属性，一个 bean 可以有多个别名（alias），
 		// 都定义在 name 属性中，不同的别名以 ",;" 分割，
 		// 假如 beanId 未定义，那么就以 name 属性中的第一个别名作为 beanName
+		// 获得Id属性
 		String id = ele.getAttribute(ID_ATTRIBUTE);
+		// 获得Name属性
 		String nameAttr = ele.getAttribute(NAME_ATTRIBUTE);
 
+		// 获取别名
 		List<String> aliases = new ArrayList<>();
 		if (StringUtils.hasLength(nameAttr)) {
 			String[] nameArr = StringUtils.tokenizeToStringArray(nameAttr, MULTI_VALUE_ATTRIBUTE_DELIMITERS);
@@ -444,6 +447,7 @@ public class BeanDefinitionParserDelegate {
 			checkNameUniqueness(beanName, aliases, ele);
 		}
 
+		//这里明显解析的过程，解析完封装到BeanDefinition中来
 		AbstractBeanDefinition beanDefinition = parseBeanDefinitionElement(ele, beanName, containingBean);
 		//当 bean 的 id 未定义时，即 beanName 为空，进入第 452 行的 if 判断。
 		// containingBean 可以看一下，这里是由方法传入的，是一个 null 值，因此进入第 456 行的判断，
@@ -524,6 +528,7 @@ public class BeanDefinitionParserDelegate {
 		// 用于获取Bean对应的类路径
 		String className = null;
 		if (ele.hasAttribute(CLASS_ATTRIBUTE)) {
+			// 拿到类名
 			className = ele.getAttribute(CLASS_ATTRIBUTE).trim();
 		}
 		// 用于解析 <bean> 标签中的 parent 属性
@@ -543,6 +548,10 @@ public class BeanDefinitionParserDelegate {
 			// 部分说了这个方法会创建一个名为 defaults 的 DocumentDefaultsDefinition，
 			// 像 lazy-init、autowire-candidate、init-method、destory-method
 			// 未定义时都会尝试从 DocumentDefaultsDefinition 中获取
+			/**
+			 * 解析Bean的属性，并将其全部封装到BeanDefinition中
+			 * BeanDefiniton就是对xml配置文件中的每个标签的封装
+			 */
 			parseBeanDefinitionAttributes(ele, beanName, containingBean, bd);
 			// 用于设置Bean描述
 			bd.setDescription(DomUtils.getChildElementValueByTagName(ele, DESCRIPTION_ELEMENT));
@@ -593,12 +602,15 @@ public class BeanDefinitionParserDelegate {
 	 * @param containingBean containing bean definition
 	 * @return a bean definition initialized according to the bean element attributes
 	 */
+	// 封装到Beandefinition中
 	public AbstractBeanDefinition parseBeanDefinitionAttributes(Element ele, String beanName,
 			@Nullable BeanDefinition containingBean, AbstractBeanDefinition bd) {
 
+		// 是否单例
 		if (ele.hasAttribute(SINGLETON_ATTRIBUTE)) {
 			error("Old 1.x 'singleton' attribute in use - upgrade to 'scope' declaration", ele);
 		}
+		// 作用于
 		else if (ele.hasAttribute(SCOPE_ATTRIBUTE)) {
 			bd.setScope(ele.getAttribute(SCOPE_ATTRIBUTE));
 		}
@@ -607,10 +619,12 @@ public class BeanDefinitionParserDelegate {
 			bd.setScope(containingBean.getScope());
 		}
 
+		// 是否抽象
 		if (ele.hasAttribute(ABSTRACT_ATTRIBUTE)) {
 			bd.setAbstract(TRUE_VALUE.equals(ele.getAttribute(ABSTRACT_ATTRIBUTE)));
 		}
 
+		// 是否懒加载
 		String lazyInit = ele.getAttribute(LAZY_INIT_ATTRIBUTE);
 		if (DEFAULT_VALUE.equals(lazyInit)) {
 			lazyInit = this.defaults.getLazyInit();
@@ -1406,13 +1420,14 @@ public class BeanDefinitionParserDelegate {
 		 * aspectj-autoproxy-->AspectJAutoProxyBeanDefinitionParser
 		 * scoped-proxy-->ScopedProxyBeanDefinitionDecorator
 		 * spring-configured-->SpringConfiguredBeanDefinitionParser
+		 * 把命名空间中的默认的处理Handler，put到了HandlerMapping中返回 handler
 		 */
 		NamespaceHandler handler = this.readerContext.getNamespaceHandlerResolver().resolve(namespaceUri);
 		if (handler == null) {
 			error("Unable to locate Spring NamespaceHandler for XML schema namespace [" + namespaceUri + "]", ele);
 			return null;
 		}
-		// 解析<aop:config>内容
+		// 解析类似<aop:config>标签内容
 		return handler.parse(ele, new ParserContext(this.readerContext, this, containingBd));
 	}
 

@@ -299,7 +299,8 @@ public class XmlBeanDefinitionReader extends AbstractBeanDefinitionReader {
 	 * @throws BeanDefinitionStoreException in case of loading or parsing errors
 	 */
 	@Override
-	public int loadBeanDefinitions(Resource resource) throws BeanDefinitionStoreException {
+	public int   loadBeanDefinitions(Resource resource) throws BeanDefinitionStoreException {
+		//把resource对象再次的编码封装
 		return loadBeanDefinitions(new EncodedResource(resource));
 	}
 
@@ -326,14 +327,15 @@ public class XmlBeanDefinitionReader extends AbstractBeanDefinitionReader {
 					"Detected cyclic loading of " + encodedResource + " - check your import definitions!");
 		}
 		try {
-			// 根据xml文件获取输入字节流
+			// 根据xml文件获取输入字节流，拿到的配置文件的输入流，父类的流方法
 			InputStream inputStream = encodedResource.getResource().getInputStream();
 			try {
+				// 把inputstream 流封装成 InputSource 为后续的dom解析打基础
 				InputSource inputSource = new InputSource(inputStream);
 				if (encodedResource.getEncoding() != null) {
 					inputSource.setEncoding(encodedResource.getEncoding());
 				}
-				// 进入关键
+				// 进入关键---1111
 				return doLoadBeanDefinitions(inputSource, encodedResource.getResource());
 			}
 			finally {
@@ -395,8 +397,11 @@ public class XmlBeanDefinitionReader extends AbstractBeanDefinitionReader {
 			// xml 解析成 Document，这里的解析使用的是 JDK 自带的 DocumentBuilder，
 			// DocumentBuilder 处理 xml 文件输入流，发现两个 <bean> 中定义的 id 重复即
 			// 会抛出 XNIException 异常，最终将导致 Spring 容器启动失败，因此就是Spring不允许两个Bean定义相同的id
+			/**
+			 * XML 解析的DOM对象
+			 */
 			Document doc = doLoadDocument(inputSource, resource);
-			// 继续加载Bean定义的流程
+			// 继续加载Bean定义的流程 ，把document注册进来
 			return registerBeanDefinitions(doc, resource);
 		}
 		catch (BeanDefinitionStoreException ex) {

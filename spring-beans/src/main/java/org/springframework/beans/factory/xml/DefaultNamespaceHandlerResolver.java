@@ -115,6 +115,7 @@ public class DefaultNamespaceHandlerResolver implements NamespaceHandlerResolver
 	@Override
 	@Nullable
 	public NamespaceHandler resolve(String namespaceUri) {
+		//111111111111
 		Map<String, Object> handlerMappings = getHandlerMappings();
 		Object handlerOrClassName = handlerMappings.get(namespaceUri);
 		if (handlerOrClassName == null) {
@@ -131,8 +132,11 @@ public class DefaultNamespaceHandlerResolver implements NamespaceHandlerResolver
 					throw new FatalBeanException("Class [" + className + "] for namespace [" + namespaceUri +
 							"] does not implement the [" + NamespaceHandler.class.getName() + "] interface");
 				}
+				//反射出来大的Class类
 				NamespaceHandler namespaceHandler = (NamespaceHandler) BeanUtils.instantiateClass(handlerClass);
+				//在这里调用命名空间的init方法
 				namespaceHandler.init();
+				// 然后把对应的handler注册到 handlerMappings 里面来
 				handlerMappings.put(namespaceUri, namespaceHandler);
 				return namespaceHandler;
 			}
@@ -157,12 +161,15 @@ public class DefaultNamespaceHandlerResolver implements NamespaceHandlerResolver
 				handlerMappings = this.handlerMappings;
 				if (handlerMappings == null) {
 					try {
+						//加载所有Properties配置文件
 						Properties mappings =
 								PropertiesLoaderUtils.loadAllProperties(this.handlerMappingsLocation, this.classLoader);
 						if (logger.isDebugEnabled()) {
 							logger.debug("Loaded NamespaceHandler mappings: " + mappings);
 						}
+						//创建接收的对象
 						Map<String, Object> mappingsToUse = new ConcurrentHashMap<>(mappings.size());
+						// 循环遍历properties文件，把其中的属性都放置到mappingsToUse中
 						CollectionUtils.mergePropertiesIntoMap(mappings, mappingsToUse);
 						handlerMappings = mappingsToUse;
 						this.handlerMappings = handlerMappings;

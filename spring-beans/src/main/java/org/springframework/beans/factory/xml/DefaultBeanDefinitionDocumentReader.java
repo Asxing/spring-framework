@@ -94,8 +94,9 @@ public class DefaultBeanDefinitionDocumentReader implements BeanDefinitionDocume
 	public void registerBeanDefinitions(Document doc, XmlReaderContext readerContext) {
 		this.readerContext = readerContext;
 		logger.debug("Loading bean definitions");
-		// 得到根节点，也就是<beans...></beans>
+		// 得到根节点，也就是<beans...></beans>，第一步，拿到根节点
 		Element root = doc.getDocumentElement();
+		// 把根节点传进来了
 		doRegisterBeanDefinitions(root);
 	}
 
@@ -172,17 +173,19 @@ public class DefaultBeanDefinitionDocumentReader implements BeanDefinitionDocume
 	protected void parseBeanDefinitions(Element root, BeanDefinitionParserDelegate delegate) {
 		// 遍历Element下的节点
 		if (delegate.isDefaultNamespace(root)) {
+			// 拿到所有的子元素
 			NodeList nl = root.getChildNodes();
 			for (int i = 0; i < nl.getLength(); i++) {
+				//拿到每个node
 				Node node = nl.item(i);
 				if (node instanceof Element) {
 					Element ele = (Element) node;
 					if (delegate.isDefaultNamespace(ele)) {
-						// 关键点咯,当遇见<bean id="XXXX" ...>
+						// 关键点咯,当遇见<bean id="XXXX" ...>，解析默认的元素，111111111111111111
 						parseDefaultElement(ele, delegate);
 					}
 					else {
-						// <aop:config ...>就会在这执行
+						// <aop:config ...>就会在这执行，解析自定的元素，最关键的，1111111111111111111
 						delegate.parseCustomElement(ele);
 					}
 				}
@@ -195,12 +198,20 @@ public class DefaultBeanDefinitionDocumentReader implements BeanDefinitionDocume
 
 	// 判断节点名称是 import、alias、bean，其中任意一个就进入相应的执行逻辑，随便点击进入一个就可以
 	private void parseDefaultElement(Element ele, BeanDefinitionParserDelegate delegate) {
+		// 获取节点名称，import 引入资源
 		if (delegate.nodeNameEquals(ele, IMPORT_ELEMENT)) {
 			importBeanDefinitionResource(ele);
 		}
+		/**
+		 * alias 进行别名的设置
+		 * <alias name="serviceid" alias="holddie1"/>
+		 * <alias name="serviceid" alias="holddie2"/>
+		 * <alias name="serviceid" alias="holddie3"/>
+		 */
 		else if (delegate.nodeNameEquals(ele, ALIAS_ELEMENT)) {
 			processAliasRegistration(ele);
 		}
+		// bean 经常使用
 		else if (delegate.nodeNameEquals(ele, BEAN_ELEMENT)) {
 			processBeanDefinition(ele, delegate);
 		}
