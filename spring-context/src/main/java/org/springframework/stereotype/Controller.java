@@ -38,6 +38,9 @@ import org.springframework.core.annotation.AliasFor;
  * @see Component
  * @see org.springframework.web.bind.annotation.RequestMapping
  * @see org.springframework.context.annotation.ClassPathBeanDefinitionScanner
+ *
+ *
+ * 如果controller上面有一个component的注解，就代表controller是component的一个子注解
  */
 @Target({ElementType.TYPE})
 @Retention(RetentionPolicy.RUNTIME)
