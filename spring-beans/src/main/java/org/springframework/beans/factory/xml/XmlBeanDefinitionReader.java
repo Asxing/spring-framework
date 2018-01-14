@@ -398,7 +398,7 @@ public class XmlBeanDefinitionReader extends AbstractBeanDefinitionReader {
 			// DocumentBuilder 处理 xml 文件输入流，发现两个 <bean> 中定义的 id 重复即
 			// 会抛出 XNIException 异常，最终将导致 Spring 容器启动失败，因此就是Spring不允许两个Bean定义相同的id
 			/**
-			 * XML 解析的DOM对象
+			 * 把 XML 解析的DOM对象
 			 */
 			Document doc = doLoadDocument(inputSource, resource);
 			// 继续加载Bean定义的流程 ，把document注册进来

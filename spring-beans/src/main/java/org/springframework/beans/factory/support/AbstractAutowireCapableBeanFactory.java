@@ -493,8 +493,13 @@ public abstract class AbstractAutowireCapableBeanFactory extends AbstractBeanFac
 		}
 
 		try {
+
+
+			// 111111111111111111111111111
 			// Give BeanPostProcessors a chance to return a proxy instead of the target bean instance.
 			Object bean = resolveBeforeInstantiation(beanName, mbdToUse);
+
+
 			if (bean != null) {
 				return bean;
 			}
@@ -505,8 +510,10 @@ public abstract class AbstractAutowireCapableBeanFactory extends AbstractBeanFac
 		}
 
 		try {
-			// 核心创建Bean
+
+			// 核心创建Bean 1111111111111111111111
 			Object beanInstance = doCreateBean(beanName, mbdToUse, args);
+
 			if (logger.isDebugEnabled()) {
 				logger.debug("Finished creating instance of bean '" + beanName + "'");
 			}
@@ -549,8 +556,10 @@ public abstract class AbstractAutowireCapableBeanFactory extends AbstractBeanFac
 			instanceWrapper = this.factoryBeanInstanceCache.remove(beanName);
 		}
 		if (instanceWrapper == null) {
-			//创建Bean实例，并包装成为BeanWrapper
+
+			//通过反射，创建Bean实例，并包装成为BeanWrapper
 			instanceWrapper = createBeanInstance(beanName, mbd, args);
+
 		}
 		final Object bean = instanceWrapper.getWrappedInstance();
 		Class<?> beanType = instanceWrapper.getWrappedClass();
@@ -588,10 +597,20 @@ public abstract class AbstractAutowireCapableBeanFactory extends AbstractBeanFac
 		// Initialize the bean instance. 初始化
 		Object exposedObject = bean;
 		try {
+
+
+
 			// 填充Bean
 			populateBean(beanName, mbd, instanceWrapper);
+
+
+
+
+
 			// 初始化Bean
 			exposedObject = initializeBean(beanName, exposedObject, mbd);
+
+
 		}
 		catch (Throwable ex) {
 			if (ex instanceof BeanCreationException && beanName.equals(((BeanCreationException) ex).getBeanName())) {
@@ -632,8 +651,14 @@ public abstract class AbstractAutowireCapableBeanFactory extends AbstractBeanFac
 
 		// Register bean as disposable. 将Bean注册为一次性的
 		try {
+
+
+
 			// 完成最后一件事情：注册需要执行撤销方法的Bean
 			registerDisposableBeanIfNecessary(beanName, bean, mbd);
+
+
+
 		}
 		catch (BeanDefinitionValidationException ex) {
 			throw new BeanCreationException(
@@ -1045,8 +1070,13 @@ public abstract class AbstractAutowireCapableBeanFactory extends AbstractBeanFac
 			if (!mbd.isSynthetic() && hasInstantiationAwareBeanPostProcessors()) {
 				Class<?> targetType = determineTargetType(beanName, mbd);
 				if (targetType != null) {
+
+					// 1111111111111111111111 实例化
 					bean = applyBeanPostProcessorsBeforeInstantiation(targetType, beanName);
+
 					if (bean != null) {
+
+						// 1111111111111 初始化
 						bean = applyBeanPostProcessorsAfterInitialization(bean, beanName);
 					}
 				}
@@ -1320,6 +1350,7 @@ public abstract class AbstractAutowireCapableBeanFactory extends AbstractBeanFac
 			}
 		}
 
+		// 若  postProcessAfterInstactiatioin 返回 false，则在下一步直接退出
 		if (!continueWithPropertyPopulation) {
 			return;
 		}
@@ -1370,8 +1401,12 @@ public abstract class AbstractAutowireCapableBeanFactory extends AbstractBeanFac
 		}
 
 		if (pvs != null) {
+
+
 			//最后跟一下此处的代码
 			applyPropertyValues(beanName, mbd, bw, pvs);
+
+
 		}
 	}
 
@@ -1598,6 +1633,7 @@ public abstract class AbstractAutowireCapableBeanFactory extends AbstractBeanFac
 			}
 		}
 
+		// 判断类型
 		if (pvs instanceof MutablePropertyValues) {
 			mpvs = (MutablePropertyValues) pvs;
 			if (mpvs.isConverted()) {
@@ -1611,12 +1647,14 @@ public abstract class AbstractAutowireCapableBeanFactory extends AbstractBeanFac
 							mbd.getResourceDescription(), beanName, "Error setting property values", ex);
 				}
 			}
+			// 获取List的值
 			original = mpvs.getPropertyValueList();
 		}
 		else {
 			original = Arrays.asList(pvs.getPropertyValues());
 		}
 
+		// 类型转换器
 		TypeConverter converter = getCustomTypeConverter();
 		if (converter == null) {
 			converter = bw;
@@ -1668,8 +1706,17 @@ public abstract class AbstractAutowireCapableBeanFactory extends AbstractBeanFac
 
 		// Set our (possibly massaged) deep copy.
 		try {
+
+
+
+
 			//进行复制，bw即BeanWrapper，持有Bean实例的一个Bean包装类
 			bw.setPropertyValues(new MutablePropertyValues(deepCopy));
+
+
+
+
+
 		}
 		catch (BeansException ex) {
 			throw new BeanCreationException(

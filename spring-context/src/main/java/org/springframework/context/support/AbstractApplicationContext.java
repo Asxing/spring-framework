@@ -539,11 +539,11 @@ public abstract class AbstractApplicationContext extends DefaultResourceLoader
 				// Allows post-processing of the bean factory in context subclasses.
 				postProcessBeanFactory(beanFactory);
 
-				// Invoke factory processors registered as beans in the context.
+				// 调用在上下文中注册为 Bean 的工厂处理器类
 				invokeBeanFactoryPostProcessors(beanFactory);
 
 				// Register bean processors that intercept bean creation.
-				// 注册自定义的BeanPostProcessor接口
+				// 注册自定义的BeanPostProcessor接口,在Bean还没有实例化之前，在实例化之前还可以一些排序，赋值的操作
 				registerBeanPostProcessors(beanFactory);
 
 				// Initialize message source for this context.用于实现访问国际化的接口
@@ -557,10 +557,10 @@ public abstract class AbstractApplicationContext extends DefaultResourceLoader
 				// 在Spring中，AbstractRefreshableWebAPP李cationContext、GenericWebApplicationContext、StaticWebApplicationContext都实现了这个方法
 				onRefresh();
 
-				// Check for listener beans and register them. 注册监听器
+				// 注册容器监听器
 				registerListeners();
 
-				// 完成所有非懒加载的单例Bean的初始化
+				// 完成所有非懒加载的单例Bean的实例化、IOC依赖注入
 				finishBeanFactoryInitialization(beanFactory);
 
 				// Last step: publish corresponding event.
@@ -856,7 +856,7 @@ public abstract class AbstractApplicationContext extends DefaultResourceLoader
 	 * 这里向 applicationEventMulticaster 中注册一些静态的，特定的监听器
 	 */
 	protected void registerListeners() {
-		// Register statically specified listeners first.
+		// 首先注册静态指定的 Listener
 		for (ApplicationListener<?> listener : getApplicationListeners()) {
 			getApplicationEventMulticaster().addApplicationListener(listener);
 		}
@@ -884,7 +884,7 @@ public abstract class AbstractApplicationContext extends DefaultResourceLoader
 	 * 完成Bean工厂的初始化
 	 */
 	protected void finishBeanFactoryInitialization(ConfigurableListableBeanFactory beanFactory) {
-		// Initialize conversion service for this context.
+		// 标签转换器  <conversionService></conversionService>
 		if (beanFactory.containsBean(CONVERSION_SERVICE_BEAN_NAME) &&
 				beanFactory.isTypeMatch(CONVERSION_SERVICE_BEAN_NAME, ConversionService.class)) {
 			beanFactory.setConversionService(
@@ -901,8 +901,12 @@ public abstract class AbstractApplicationContext extends DefaultResourceLoader
 		// Initialize LoadTimeWeaverAware beans early to allow for registering their transformers early.
 		String[] weaverAwareNames = beanFactory.getBeanNamesForType(LoadTimeWeaverAware.class, false, false);
 		for (String weaverAwareName : weaverAwareNames) {
+
+
 			// 此处的getBean为AbstractBeanFactory的doGetBean
 			getBean(weaverAwareName);
+
+
 		}
 
 		// Stop using the temporary ClassLoader for type matching.

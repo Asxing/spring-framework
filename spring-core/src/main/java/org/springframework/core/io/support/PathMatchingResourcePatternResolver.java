@@ -785,6 +785,7 @@ public class PathMatchingResourcePatternResolver implements ResourcePatternResol
 			logger.debug("Searching directory [" + dir.getAbsolutePath() +
 					"] for files matching pattern [" + fullPattern + "]");
 		}
+		// 获取到该路径下所有的路径
 		File[] dirContents = dir.listFiles();
 		if (dirContents == null) {
 			if (logger.isWarnEnabled()) {

@@ -227,6 +227,8 @@ public class BeanWrapperImpl extends AbstractNestablePropertyAccessor implements
 	@Override
 	@Nullable
 	protected BeanPropertyHandler getLocalPropertyHandler(String propertyName) {
+
+		//PropertyDescriptor jdk内省机制
 		PropertyDescriptor pd = getCachedIntrospectionResults().getPropertyDescriptor(propertyName);
 		if (pd != null) {
 			return new BeanPropertyHandler(pd);
@@ -269,6 +271,7 @@ public class BeanWrapperImpl extends AbstractNestablePropertyAccessor implements
 
 		private final PropertyDescriptor pd;
 
+		//其中就有setter和getter方法
 		public BeanPropertyHandler(PropertyDescriptor pd) {
 			super(pd.getPropertyType(), pd.getReadMethod() != null, pd.getWriteMethod() != null);
 			this.pd = pd;
