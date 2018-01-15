@@ -427,12 +427,14 @@ public class BeanDefinitionParserDelegate {
 		// 获取别名
 		List<String> aliases = new ArrayList<>();
 		if (StringUtils.hasLength(nameAttr)) {
+			// 按，分隔
 			String[] nameArr = StringUtils.tokenizeToStringArray(nameAttr, MULTI_VALUE_ATTRIBUTE_DELIMITERS);
 			aliases.addAll(Arrays.asList(nameArr));
 		}
 
 		String beanName = id;
 		if (!StringUtils.hasText(beanName) && !aliases.isEmpty()) {
+			// name的第一个值作为id
 			beanName = aliases.remove(0);
 			if (logger.isDebugEnabled()) {
 				logger.debug("No XML 'id' specified - using '" + beanName +
@@ -440,6 +442,7 @@ public class BeanDefinitionParserDelegate {
 			}
 		}
 
+		// 默认为null
 		if (containingBean == null) {
 			//确保BeanName的唯一性，方法就知道，BeanName 与 Bean 别名都会放在 Set<String> 中，
 			// 然后每次加载 Bean 定义的时候都会去这个 Set<String > 中检查
@@ -461,6 +464,7 @@ public class BeanDefinitionParserDelegate {
 								beanDefinition, this.readerContext.getRegistry(), true);
 					}
 					else {
+						// 若为空则Spring同时会把类名作为其别名
 						beanName = this.readerContext.generateBeanName(beanDefinition);
 						// Register an alias for the plain bean class name, if still possible,
 						// if the generator returned the class name plus a suffix.
@@ -551,9 +555,15 @@ public class BeanDefinitionParserDelegate {
 			/**
 			 * 解析Bean的属性，并将其全部封装到BeanDefinition中
 			 * BeanDefiniton就是对xml配置文件中的每个标签的封装
+			 * 就是读取其配置，调用相应的setter方法保存在BeanDefinition中
 			 */
 			parseBeanDefinitionAttributes(ele, beanName, containingBean, bd);
 			// 用于设置Bean描述
+			/**
+			 * 	<bean id="b" name="one, two" class="base.SimpleBean">
+			 *		<description>SimpleBean</description>
+			 *	</bean>
+			 */
 			bd.setDescription(DomUtils.getChildElementValueByTagName(ele, DESCRIPTION_ELEMENT));
 
 			// parseMetaElements 用于解析 META 元素
@@ -705,7 +715,9 @@ public class BeanDefinitionParserDelegate {
 				Element metaElement = (Element) node;
 				String key = metaElement.getAttribute(KEY_ATTRIBUTE);
 				String value = metaElement.getAttribute(VALUE_ATTRIBUTE);
+				// 就是一个key，value的载体
 				BeanMetadataAttribute attribute = new BeanMetadataAttribute(key, value);
+				// sourceExtractor 默认是NullSourceExtractor，返回的是空
 				attribute.setSource(extractSource(metaElement));
 				attributeAccessor.addMetadataAttribute(attribute);
 			}

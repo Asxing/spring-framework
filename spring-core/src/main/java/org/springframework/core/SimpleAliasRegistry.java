@@ -45,6 +45,7 @@ public class SimpleAliasRegistry implements AliasRegistry {
 	public void registerAlias(String name, String alias) {
 		Assert.hasText(name, "'name' must not be empty");
 		Assert.hasText(alias, "'alias' must not be empty");
+		// 名字和别名一样
 		if (alias.equals(name)) {
 			this.aliasMap.remove(alias);
 		}
@@ -61,6 +62,7 @@ public class SimpleAliasRegistry implements AliasRegistry {
 				}
 			}
 			checkForAliasCircle(name, alias);
+			// 所以别名关系的保存使用Map完成，key为别名，value为本来的名字
 			this.aliasMap.put(alias, name);
 		}
 	}

@@ -483,7 +483,10 @@ public abstract class AbstractAutowireCapableBeanFactory extends AbstractBeanFac
 			mbdToUse.setBeanClass(resolvedClass);
 		}
 
-		// Prepare method overrides.
+		/**
+		 * Prepare method overrides.
+		 * 用于检测lookup-method标签配置的方法是否存在
+		 */
 		try {
 			mbdToUse.prepareMethodOverrides();
 		}
@@ -495,11 +498,18 @@ public abstract class AbstractAutowireCapableBeanFactory extends AbstractBeanFac
 		try {
 
 
+
+
+
 			// 111111111111111111111111111
 			// Give BeanPostProcessors a chance to return a proxy instead of the target bean instance.
 			Object bean = resolveBeforeInstantiation(beanName, mbdToUse);
 
 
+			/**
+			 * 可以看出只要返回的bean不为空，那么将不会继续执行剩下的Spring初始化流程，此接口用于初始化自定义的Bean，
+			 * 主要是在Spring内部使用
+			 */
 			if (bean != null) {
 				return bean;
 			}
@@ -511,8 +521,19 @@ public abstract class AbstractAutowireCapableBeanFactory extends AbstractBeanFac
 
 		try {
 
+
+
+
+
+
 			// 核心创建Bean 1111111111111111111111
 			Object beanInstance = doCreateBean(beanName, mbdToUse, args);
+
+
+
+
+
+
 
 			if (logger.isDebugEnabled()) {
 				logger.debug("Finished creating instance of bean '" + beanName + "'");
@@ -602,8 +623,6 @@ public abstract class AbstractAutowireCapableBeanFactory extends AbstractBeanFac
 
 			// 填充Bean
 			populateBean(beanName, mbd, instanceWrapper);
-
-
 
 
 
@@ -1164,6 +1183,7 @@ public abstract class AbstractAutowireCapableBeanFactory extends AbstractBeanFac
 		// Need to determine the constructor...
 		Constructor<?>[] ctors = determineConstructorsFromBeanPostProcessors(beanClass, beanName);
 		//此处判断是否使用构造函数注入属性，若是执行if语句内，否则执行默认的setter注入属性
+		// 配置了 <constructor-arg> 子元素
 		if (ctors != null ||
 				mbd.getResolvedAutowireMode() == RootBeanDefinition.AUTOWIRE_CONSTRUCTOR ||
 				mbd.hasConstructorArgumentValues() || !ObjectUtils.isEmpty(args))  {
@@ -1379,6 +1399,8 @@ public abstract class AbstractAutowireCapableBeanFactory extends AbstractBeanFac
 		boolean hasInstAwareBpps = hasInstantiationAwareBeanPostProcessors();
 		boolean needsDepCheck = (mbd.getDependencyCheck() != RootBeanDefinition.DEPENDENCY_CHECK_NONE);
 
+
+		// 对于 annotation 的支持
 		if (hasInstAwareBpps || needsDepCheck) {
 			if (pvs == null) {
 				pvs = mbd.getPropertyValues();
@@ -1403,7 +1425,7 @@ public abstract class AbstractAutowireCapableBeanFactory extends AbstractBeanFac
 		if (pvs != null) {
 
 
-			//最后跟一下此处的代码
+			//最后跟一下此处的代码，真正设值在此，
 			applyPropertyValues(beanName, mbd, bw, pvs);
 
 

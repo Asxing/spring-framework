@@ -134,7 +134,11 @@ public class DefaultNamespaceHandlerResolver implements NamespaceHandlerResolver
 				}
 				//反射出来大的Class类
 				NamespaceHandler namespaceHandler = (NamespaceHandler) BeanUtils.instantiateClass(handlerClass);
-				//在这里调用命名空间的init方法
+				/**
+				 * 	调用命名空间的init方法，用以向NamespaceHandler对象注册BeanDefinitionParser对象，此接口用以解析顶层（beans下）的非默认命名空间元素，如,<context:annotation-config />
+				 * 	这样就容易理解，每种标签的解析仍然是策略模式的体现，init负责向父类NamespacehandlerSupport 注册不同的策略，由父类的 NamespaceHandlerSupport.parse
+				 * 	方法根据具体的子标签调用相应的子标签完成相应的解析过程
+				 */
 				namespaceHandler.init();
 				// 然后把对应的handler注册到 handlerMappings 里面来
 				handlerMappings.put(namespaceUri, namespaceHandler);

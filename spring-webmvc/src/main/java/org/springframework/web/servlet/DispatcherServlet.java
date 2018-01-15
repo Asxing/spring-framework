@@ -617,7 +617,7 @@ public class DispatcherServlet extends FrameworkServlet {
 	 * <p>If no HandlerAdapter beans are defined in the BeanFactory for this namespace,
 	 * we default to SimpleControllerHandlerAdapter.
 	 */
-	private void initHandlerAdapters(ApplicationContext context) {
+	private void  initHandlerAdapters(ApplicationContext context) {
 		this.handlerAdapters = null;
 
 		if (this.detectAllHandlerAdapters) {

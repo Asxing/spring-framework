@@ -116,6 +116,7 @@ public class BeanDefinitionReaderUtils {
 			if (definition.getParentName() != null) {
 				generatedBeanName = definition.getParentName() + "$child";
 			}
+			// 工厂方法产生的Bean
 			else if (definition.getFactoryBeanName() != null) {
 				generatedBeanName = definition.getFactoryBeanName() + "$created";
 			}
@@ -134,6 +135,7 @@ public class BeanDefinitionReaderUtils {
 			// Top-level bean: use plain class name.
 			// Increase counter until the id is unique.
 			int counter = -1;
+			// 用类名#自增的数字命名
 			while (counter == -1 || registry.containsBeanDefinition(id)) {
 				counter++;
 				id = generatedBeanName + GENERATED_BEAN_NAME_SEPARATOR + counter;

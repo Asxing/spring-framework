@@ -132,11 +132,15 @@ public class DefaultBeanDefinitionDocumentReader implements BeanDefinitionDocume
 		BeanDefinitionParserDelegate parent = this.delegate;
 		this.delegate = createDelegate(getReaderContext(), root, parent);
 
+		// 默认的命名空间
 		if (this.delegate.isDefaultNamespace(root)) {
+			// 检查profile属性
 			String profileSpec = root.getAttribute(PROFILE_ATTRIBUTE);
 			if (StringUtils.hasText(profileSpec)) {
+				// profile 属性可以以，分割
 				String[] specifiedProfiles = StringUtils.tokenizeToStringArray(
 						profileSpec, BeanDefinitionParserDelegate.MULTI_VALUE_ATTRIBUTE_DELIMITERS);
+				// profile属性支持！取反
 				if (!getReaderContext().getEnvironment().acceptsProfiles(specifiedProfiles)) {
 					if (logger.isInfoEnabled()) {
 						logger.info("Skipped XML bean definition file due to specified profiles [" + profileSpec +
@@ -147,6 +151,7 @@ public class DefaultBeanDefinitionDocumentReader implements BeanDefinitionDocume
 			}
 		}
 
+		// 供子类去覆盖，目的在于给自雷一个把我们自定义的标签转为Spring标准标签的机会
 		preProcessXml(root);
 		// 使用委托类解析Bean定义，这个方法开始真正遍历XML文件中的各个标签并转换为对应的Bean定义
 		parseBeanDefinitions(root, this.delegate);
