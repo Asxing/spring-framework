@@ -198,6 +198,7 @@ public abstract class AbstractHandlerMethodMapping<T> extends AbstractHandlerMap
 		if (logger.isDebugEnabled()) {
 			logger.debug("Looking for request mappings in application context: " + getApplicationContext());
 		}
+		// 获取容器中的所有的Bean
 		String[] beanNames = (this.detectHandlerMethodsInAncestorContexts ?
 				BeanFactoryUtils.beanNamesForTypeIncludingAncestors(obtainApplicationContext(), Object.class) :
 				obtainApplicationContext().getBeanNamesForType(Object.class));
@@ -214,6 +215,10 @@ public abstract class AbstractHandlerMethodMapping<T> extends AbstractHandlerMap
 						logger.debug("Could not resolve target class for bean with name '" + beanName + "'", ex);
 					}
 				}
+				/**
+				 * isHandler 方法原理
+				 * 判断类上有咩有@Controller注解或者是@RequestMaping注解
+				 */
 				if (beanType != null && isHandler(beanType)) {
 					detectHandlerMethods(beanName);
 				}
