@@ -86,7 +86,7 @@ public class ComponentScanBeanDefinitionParser implements BeanDefinitionParser {
 		String[] basePackages = StringUtils.tokenizeToStringArray(basePackage,
 				ConfigurableApplicationContext.CONFIG_LOCATION_DELIMITERS);
 
-		// 自动扫描BeanDefinition并注册它们,exclude-filter/include-filter
+		// 自动扫描 BeanDefinition 并注册它们, exclude-filter / include-filter
 		ClassPathBeanDefinitionScanner scanner = configureScanner(parserContext, element);
 		// doscan()
 		Set<BeanDefinitionHolder> beanDefinitions = scanner.doScan(basePackages);
@@ -103,7 +103,7 @@ public class ComponentScanBeanDefinitionParser implements BeanDefinitionParser {
 			useDefaultFilters = Boolean.valueOf(element.getAttribute(USE_DEFAULT_FILTERS_ATTRIBUTE));
 		}
 
-		// 扫描对应路径下的所有的文件,标注该注解的实体就会被发现
+		// 扫描对应路径下的所有的文件,标注 component 注解的实体就会被发现
 		ClassPathBeanDefinitionScanner scanner = createScanner(parserContext.getReaderContext(), useDefaultFilters);
 
 		scanner.setBeanDefinitionDefaults(parserContext.getDelegate().getBeanDefinitionDefaults());
@@ -114,6 +114,7 @@ public class ComponentScanBeanDefinitionParser implements BeanDefinitionParser {
 		}
 
 		try {
+			// 解析用户自定 beanname 生成器，对应 name-generator 标签解析
 			parseBeanNameGenerator(element, scanner);
 		}
 		catch (Exception ex) {
@@ -121,13 +122,18 @@ public class ComponentScanBeanDefinitionParser implements BeanDefinitionParser {
 		}
 
 		try {
+			// 解析用户自定义的 scoped-proxy 默认是 no,这里指的主要是：
+			// 使用 interface 的 JDK 动态代理
+			// 使用 targetClass 的 CGLIB 动态代理
 			parseScope(element, scanner);
 		}
 		catch (Exception ex) {
 			parserContext.getReaderContext().error(ex.getMessage(), parserContext.extractSource(element), ex.getCause());
 		}
 
-		//配置 exclude-filter/include-filter 解析
+		// 配置 exclude-filter/include-filter 解析
+		// 针对用户的自定义过滤器，用来标注要扫描那些类，以及 排除那些类（Controller）
+		// 需要注意的是，自定义过滤器只有在 use-default-filters = “false” 才会生效
 		parseTypeFilters(element, scanner, parserContext);
 
 		return scanner;

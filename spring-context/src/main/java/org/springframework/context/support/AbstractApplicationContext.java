@@ -542,7 +542,7 @@ public abstract class AbstractApplicationContext extends DefaultResourceLoader
 
 				/**
 				 * 调用在上下文中注册为 Bean 的工厂处理器类，BeanFactoryPostProcessor接口允许我们在Bean正式初始化之前改变其值，此接口只有一个方法
-				 * 注意：此时未进行Bean的初始化工作，初始化在和面的finishBeanFactoryInitialization进行的，所有在BeanFactoryPostProcessor对象中获取
+				 * 注意：此时未进行Bean的初始化工作，初始化在后面的finishBeanFactoryInitialization进行的，所有在BeanFactoryPostProcessor对象中获取
 				 * Bean会导致提前初始化。
  				 */
 				invokeBeanFactoryPostProcessors(beanFactory);
