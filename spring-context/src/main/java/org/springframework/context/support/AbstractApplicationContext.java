@@ -884,7 +884,7 @@ public abstract class AbstractApplicationContext extends DefaultResourceLoader
 		// Propagate refresh to lifecycle processor first.
 		getLifecycleProcessor().onRefresh();
 
-		// Publish the final event.
+		// Publish the final event.  发送一波事件
 		publishEvent(new ContextRefreshedEvent(this));
 
 		// Participate in LiveBeansView MBean, if active.

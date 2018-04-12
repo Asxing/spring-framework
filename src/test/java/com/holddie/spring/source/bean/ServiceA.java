@@ -1,4 +1,6 @@
-package com.holddie.spring.source;
+package com.holddie.spring.source.bean;
+
+import org.springframework.stereotype.Service;
 
 /**
  * @author yangze1
