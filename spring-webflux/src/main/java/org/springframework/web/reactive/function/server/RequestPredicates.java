@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2017 the original author or authors.
+ * Copyright 2002-2018 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,6 +16,7 @@
 
 package org.springframework.web.reactive.function.server;
 
+import java.net.InetSocketAddress;
 import java.net.URI;
 import java.security.Principal;
 import java.util.ArrayList;
@@ -39,6 +40,7 @@ import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.HttpCookie;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.MediaType;
+import org.springframework.http.codec.multipart.Part;
 import org.springframework.http.server.PathContainer;
 import org.springframework.http.server.reactive.ServerHttpRequest;
 import org.springframework.lang.Nullable;
@@ -513,6 +515,11 @@ public abstract class RequestPredicates {
 		}
 
 		@Override
+		public Optional<InetSocketAddress> remoteAddress() {
+			return this.request.remoteAddress();
+		}
+
+		@Override
 		public <T> T body(BodyExtractor<T, ? super ServerHttpRequest> extractor) {
 			return this.request.body(extractor);
 		}
@@ -580,6 +587,16 @@ public abstract class RequestPredicates {
 		@Override
 		public Mono<? extends Principal> principal() {
 			return this.request.principal();
+		}
+
+		@Override
+		public Mono<MultiValueMap<String, String>> formData() {
+			return this.request.formData();
+		}
+
+		@Override
+		public Mono<MultiValueMap<String, Part>> multipartData() {
+			return this.request.multipartData();
 		}
 
 		@Override

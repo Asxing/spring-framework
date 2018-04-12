@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2017 the original author or authors.
+ * Copyright 2002-2018 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -43,6 +43,7 @@ import org.springframework.util.MultiValueMap;
  * Base class for {@link ServerHttpResponse} implementations.
  *
  * @author Rossen Stoyanchev
+ * @author Juergen Hoeller
  * @author Sebastien Deleuze
  * @since 5.0
  */
@@ -112,7 +113,7 @@ public abstract class AbstractServerHttpResponse implements ServerHttpResponse {
 	 * @param statusCode the HTTP status as an integer value
 	 * @since 5.0.1
 	 */
-	public void setStatusCodeValue(Integer statusCode) {
+	public void setStatusCodeValue(@Nullable Integer statusCode) {
 		this.statusCode = statusCode;
 	}
 
@@ -208,13 +209,13 @@ public abstract class AbstractServerHttpResponse implements ServerHttpResponse {
 			return Mono.empty();
 		}
 
-		this.commitActions.add(() -> {
-			applyStatusCode();
-			applyHeaders();
-			applyCookies();
-			this.state.set(State.COMMITTED);
-			return Mono.empty();
-		});
+		this.commitActions.add(() ->
+				Mono.fromRunnable(() -> {
+					applyStatusCode();
+					applyHeaders();
+					applyCookies();
+					this.state.set(State.COMMITTED);
+				}));
 
 		if (writeAction != null) {
 			this.commitActions.add(writeAction);
@@ -223,7 +224,7 @@ public abstract class AbstractServerHttpResponse implements ServerHttpResponse {
 		List<? extends Mono<Void>> actions = this.commitActions.stream()
 				.map(Supplier::get).collect(Collectors.toList());
 
-		return Flux.concat(actions).next();
+		return Flux.concat(actions).then();
 	}
 
 

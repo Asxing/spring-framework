@@ -162,7 +162,11 @@ public abstract class AbstractListenerWriteProcessor<T> implements Processor<T, 
 	 * Invoked after the current data has been written and before requesting
 	 * the next item from the upstream, write Publisher.
 	 * <p>The default implementation is a no-op.
+	 * @deprecated originally introduced for Undertow to stop write notifications
+	 * when no data is available, but deprecated as of as of 5.0.6 since constant
+	 * switching on every requested item causes a significant slowdown.
 	 */
+	@Deprecated
 	protected void writingPaused() {
 	}
 
@@ -191,6 +195,12 @@ public abstract class AbstractListenerWriteProcessor<T> implements Processor<T, 
 			logger.trace(oldState + " -> " + newState);
 		}
 		return result;
+	}
+
+	private void changeStateToReceived(State oldState) {
+		if (changeState(oldState, State.RECEIVED)) {
+			writeIfPossible();
+		}
 	}
 
 	private void changeStateToComplete(State oldState) {
@@ -255,9 +265,7 @@ public abstract class AbstractListenerWriteProcessor<T> implements Processor<T, 
 				}
 				else {
 					processor.dataReceived(data);
-					if (processor.changeState(this, RECEIVED)) {
-						processor.writeIfPossible();
-					}
+					processor.changeStateToReceived(this);
 				}
 			}
 			@Override
@@ -267,6 +275,7 @@ public abstract class AbstractListenerWriteProcessor<T> implements Processor<T, 
 		},
 
 		RECEIVED {
+			@SuppressWarnings("deprecation")
 			@Override
 			public <T> void onWritePossible(AbstractListenerWriteProcessor<T> processor) {
 				if (processor.changeState(this, WRITING)) {
@@ -286,13 +295,8 @@ public abstract class AbstractListenerWriteProcessor<T> implements Processor<T, 
 								}
 							}
 						}
-						else if (processor.changeState(WRITING, RECEIVED)) {
-							if (processor.subscriberCompleted) {
-								processor.changeStateToComplete(RECEIVED);
-							}
-							else {
-								processor.writeIfPossible();
-							}
+						else {
+							processor.changeStateToReceived(WRITING);
 						}
 					}
 					catch (IOException ex) {

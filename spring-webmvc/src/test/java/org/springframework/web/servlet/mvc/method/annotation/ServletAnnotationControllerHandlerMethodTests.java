@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2017 the original author or authors.
+ * Copyright 2002-2018 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -31,8 +31,10 @@ import java.net.URISyntaxException;
 import java.nio.charset.StandardCharsets;
 import java.security.Principal;
 import java.text.SimpleDateFormat;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.Date;
 import java.util.GregorianCalendar;
@@ -44,6 +46,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.UUID;
 import javax.servlet.ServletConfig;
 import javax.servlet.ServletContext;
 import javax.servlet.http.Cookie;
@@ -141,7 +144,9 @@ import org.springframework.web.servlet.View;
 import org.springframework.web.servlet.ViewResolver;
 import org.springframework.web.servlet.mvc.annotation.ModelAndViewResolver;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
+import org.springframework.web.servlet.support.RequestContext;
 import org.springframework.web.servlet.support.RequestContextUtils;
+import org.springframework.web.servlet.view.AbstractView;
 import org.springframework.web.servlet.view.InternalResourceViewResolver;
 
 import static org.junit.Assert.*;
@@ -1225,12 +1230,21 @@ public class ServletAnnotationControllerHandlerMethodTests extends AbstractServl
 	}
 
 	@Test
+	public void bridgeMethodsWithMultipleInterfaces() throws Exception {
+		initServletWithControllers(ArticleController.class);
+
+		MockHttpServletRequest request = new MockHttpServletRequest("GET", "/method");
+		MockHttpServletResponse response = new MockHttpServletResponse();
+		getServlet().service(request, response);
+	}
+
+	@Test
 	public void requestParamMap() throws Exception {
 		initServletWithControllers(RequestParamMapController.class);
 
 		MockHttpServletRequest request = new MockHttpServletRequest("GET", "/map");
 		request.addParameter("key1", "value1");
-		request.addParameter("key2", new String[]{"value21", "value22"});
+		request.addParameter("key2", new String[] {"value21", "value22"});
 		MockHttpServletResponse response = new MockHttpServletResponse();
 
 		getServlet().service(request, response);
@@ -1249,7 +1263,7 @@ public class ServletAnnotationControllerHandlerMethodTests extends AbstractServl
 
 		MockHttpServletRequest request = new MockHttpServletRequest("GET", "/map");
 		request.addHeader("Content-Type", "text/html");
-		request.addHeader("Custom-Header", new String[]{"value21", "value22"});
+		request.addHeader("Custom-Header", new String[] {"value21", "value22"});
 		MockHttpServletResponse response = new MockHttpServletResponse();
 
 		getServlet().service(request, response);
@@ -1825,7 +1839,7 @@ public class ServletAnnotationControllerHandlerMethodTests extends AbstractServl
 		request.addParameter("param1", "value1");
 		MockHttpServletResponse response = new MockHttpServletResponse();
 		getServlet().service(request, response);
-		assertTrue(response.getContentAsString().contains("field 'param2'"));
+		assertEquals("value1-null-null", response.getContentAsString());
 	}
 
 	@Test
@@ -1833,10 +1847,11 @@ public class ServletAnnotationControllerHandlerMethodTests extends AbstractServl
 		initServletWithControllers(ValidatedDataClassController.class);
 
 		MockHttpServletRequest request = new MockHttpServletRequest("GET", "/bind");
+		request.addParameter("param1", "value1");
 		request.addParameter("param2", "x");
 		MockHttpServletResponse response = new MockHttpServletResponse();
 		getServlet().service(request, response);
-		assertTrue(response.getContentAsString().contains("field 'param2'"));
+		assertEquals("value1-x-null", response.getContentAsString());
 	}
 
 	@Test
@@ -1848,7 +1863,7 @@ public class ServletAnnotationControllerHandlerMethodTests extends AbstractServl
 		request.addParameter("param3", "3");
 		MockHttpServletResponse response = new MockHttpServletResponse();
 		getServlet().service(request, response);
-		assertTrue(response.getContentAsString().contains("field 'param1'"));
+		assertEquals("null-true-3", response.getContentAsString());
 	}
 
 	@Test
@@ -1869,10 +1884,11 @@ public class ServletAnnotationControllerHandlerMethodTests extends AbstractServl
 		initServletWithControllers(OptionalDataClassController.class);
 
 		MockHttpServletRequest request = new MockHttpServletRequest("GET", "/bind");
+		request.addParameter("param1", "value1");
 		request.addParameter("param2", "x");
 		MockHttpServletResponse response = new MockHttpServletResponse();
 		getServlet().service(request, response);
-		assertTrue(response.getContentAsString().contains("field 'param2'"));
+		assertEquals("value1-x-null", response.getContentAsString());
 	}
 
 	@Test
@@ -2591,7 +2607,6 @@ public class ServletAnnotationControllerHandlerMethodTests extends AbstractServl
 				public String getContentType() {
 					return null;
 				}
-
 				@Override
 				@SuppressWarnings({"unchecked", "deprecation", "rawtypes"})
 				public void render(@Nullable Map model, HttpServletRequest request, HttpServletResponse response)
@@ -3018,7 +3033,6 @@ public class ServletAnnotationControllerHandlerMethodTests extends AbstractServl
 	public static class MyModelAndViewResolver implements ModelAndViewResolver {
 
 		@Override
-		@SuppressWarnings("rawtypes")
 		public ModelAndView resolveModelAndView(Method handlerMethod, Class<?> handlerType, Object returnValue,
 				ExtendedModelMap implicitModel, NativeWebRequest webRequest) {
 
@@ -3033,7 +3047,6 @@ public class ServletAnnotationControllerHandlerMethodTests extends AbstractServl
 							throws Exception {
 						response.getWriter().write("myValue");
 					}
-
 				});
 			}
 			return UNRESOLVED;
@@ -3103,6 +3116,78 @@ public class ServletAnnotationControllerHandlerMethodTests extends AbstractServl
 		@RequestMapping("/method")
 		public ModelAndView method(MyEntity object) {
 			return new ModelAndView("/something");
+		}
+	}
+
+	@RestController
+	@RequestMapping(path = ApiConstants.ARTICLES_PATH)
+	public static class ArticleController implements ApiConstants, ResourceEndpoint<Article, ArticlePredicate> {
+
+		@GetMapping(params = "page")
+		public Collection<Article> find(String pageable, ArticlePredicate predicate) {
+			throw new UnsupportedOperationException("not implemented");
+		}
+
+		@GetMapping
+		public List<Article> find(boolean sort, ArticlePredicate predicate) {
+			throw new UnsupportedOperationException("not implemented");
+		}
+	}
+
+	interface ApiConstants {
+
+		String API_V1 = "/v1";
+
+		String ARTICLES_PATH = API_V1 + "/articles";
+	}
+
+	public interface ResourceEndpoint<E extends Entity, P extends EntityPredicate<?>> {
+
+		Collection<E> find(String pageable, P predicate) throws IOException;
+
+		List<E> find(boolean sort, P predicate) throws IOException;
+	}
+
+	public static abstract class Entity {
+
+		public UUID id;
+
+		public String createdBy;
+
+		public Instant createdDate;
+	}
+
+	public static class Article extends Entity {
+
+		public String slug;
+
+		public String title;
+
+		public String content;
+	}
+
+	public static abstract class EntityPredicate<E extends Entity> {
+
+		public String createdBy;
+
+		public Instant createdBefore;
+
+		public Instant createdAfter;
+
+		public boolean accept(E entity) {
+			return (createdBy == null || createdBy.equals(entity.createdBy)) &&
+					(createdBefore == null || createdBefore.compareTo(entity.createdDate) >= 0) &&
+					(createdAfter == null || createdAfter.compareTo(entity.createdDate) >= 0);
+		}
+	}
+
+	public static class ArticlePredicate extends EntityPredicate<Article> {
+
+		public String query;
+
+		@Override
+		public boolean accept(Article entity) {
+			return super.accept(entity) && (query == null || (entity.title.contains(query) || entity.content.contains(query)));
 		}
 	}
 
@@ -3277,7 +3362,6 @@ public class ServletAnnotationControllerHandlerMethodTests extends AbstractServl
 
 		private String name;
 
-
 		public String getName() {
 			return name;
 		}
@@ -3325,16 +3409,14 @@ public class ServletAnnotationControllerHandlerMethodTests extends AbstractServl
 		}
 
 		@RequestMapping("/singleString")
-		public void processMultipart(@RequestParam("content") String content,
-				HttpServletResponse response) throws IOException {
-
+		public void processMultipart(@RequestParam("content") String content, HttpServletResponse response)
+				throws IOException {
 			response.getWriter().write(content);
 		}
 
 		@RequestMapping("/stringArray")
-		public void processMultipart(@RequestParam("content") String[] content,
-				HttpServletResponse response) throws IOException {
-
+		public void processMultipart(@RequestParam("content") String[] content, HttpServletResponse response)
+				throws IOException {
 			response.getWriter().write(StringUtils.arrayToDelimitedString(content, "-"));
 		}
 	}
@@ -3458,7 +3540,7 @@ public class ServletAnnotationControllerHandlerMethodTests extends AbstractServl
 
 		@RequestMapping(value = "empty", method = RequestMethod.POST)
 		@ResponseStatus(HttpStatus.CREATED)
-		public HttpHeaders createNoHeader() throws URISyntaxException {
+		public HttpHeaders createNoHeader() {
 			return new HttpHeaders();
 		}
 	}
@@ -3546,18 +3628,20 @@ public class ServletAnnotationControllerHandlerMethodTests extends AbstractServl
 
 		@InitBinder
 		public void initBinder(WebDataBinder binder) {
+			binder.initDirectFieldAccess();
+			binder.setConversionService(new DefaultFormattingConversionService());
 			LocalValidatorFactoryBean vf = new LocalValidatorFactoryBean();
 			vf.afterPropertiesSet();
 			binder.setValidator(vf);
-			binder.setConversionService(new DefaultFormattingConversionService());
 		}
 
 		@RequestMapping("/bind")
-		public String handle(@Valid DataClass data, BindingResult result) {
+		public BindStatusView handle(@Valid DataClass data, BindingResult result) {
 			if (result.hasErrors()) {
-				return result.toString();
+				return new BindStatusView(result.getFieldValue("param1") + "-" +
+						result.getFieldValue("param2") + "-" + result.getFieldValue("param3"));
 			}
-			return data.param1 + "-" + data.param2 + "-" + data.param3;
+			return new BindStatusView(data.param1 + "-" + data.param2 + "-" + data.param3);
 		}
 	}
 
@@ -3569,9 +3653,30 @@ public class ServletAnnotationControllerHandlerMethodTests extends AbstractServl
 			if (result.hasErrors()) {
 				assertNotNull(optionalData);
 				assertFalse(optionalData.isPresent());
-				return result.toString();
+				return result.getFieldValue("param1") + "-" + result.getFieldValue("param2") + "-" +
+						result.getFieldValue("param3");
 			}
 			return optionalData.map(data -> data.param1 + "-" + data.param2 + "-" + data.param3).orElse("");
+		}
+	}
+
+	public static class BindStatusView extends AbstractView {
+
+		private final String content;
+
+		public BindStatusView(String content) {
+			this.content = content;
+		}
+
+		@Override
+		protected void renderMergedOutputModel(
+				Map<String, Object> model, HttpServletRequest request, HttpServletResponse response) throws Exception {
+			RequestContext rc = new RequestContext(request, model);
+			rc.getBindStatus("dataClass");
+			rc.getBindStatus("dataClass.param1");
+			rc.getBindStatus("dataClass.param2");
+			rc.getBindStatus("dataClass.param3");
+			response.getWriter().write(this.content);
 		}
 	}
 

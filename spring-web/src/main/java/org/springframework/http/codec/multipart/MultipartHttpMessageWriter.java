@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2017 the original author or authors.
+ * Copyright 2002-2018 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -229,12 +229,13 @@ public class MultipartHttpMessageWriter implements HttpMessageWriter<MultiValueM
 	@SuppressWarnings("unchecked")
 	private <T> Flux<DataBuffer> encodePart(byte[] boundary, String name, T value) {
 		MultipartHttpOutputMessage outputMessage = new MultipartHttpOutputMessage(this.bufferFactory, getCharset());
+		HttpHeaders outputHeaders = outputMessage.getHeaders();
 
 		T body;
 		ResolvableType resolvableType = null;
 		if (value instanceof HttpEntity) {
 			HttpEntity<T> httpEntity = (HttpEntity<T>) value;
-			outputMessage.getHeaders().putAll(httpEntity.getHeaders());
+			outputHeaders.putAll(httpEntity.getHeaders());
 			body = httpEntity.getBody();
 			Assert.state(body != null, "MultipartHttpMessageWriter only supports HttpEntity with body");
 
@@ -247,15 +248,24 @@ public class MultipartHttpMessageWriter implements HttpMessageWriter<MultiValueM
 		else {
 			body = value;
 		}
-
 		if (resolvableType == null) {
 			resolvableType = ResolvableType.forClass(body.getClass());
 		}
 
-		String filename = (body instanceof Resource ? ((Resource) body).getFilename() : null);
-		outputMessage.getHeaders().setContentDispositionFormData(name, filename);
+		if (!outputHeaders.containsKey(HttpHeaders.CONTENT_DISPOSITION)) {
+			if (body instanceof Resource) {
+				outputHeaders.setContentDispositionFormData(name, ((Resource) body).getFilename());
+			}
+			else if (Resource.class.equals(resolvableType.getRawClass())) {
+				body = (T) Mono.from((Publisher<?>) body).doOnNext(o -> outputHeaders
+						.setContentDispositionFormData(name, ((Resource) o).getFilename()));
+			}
+			else {
+				outputHeaders.setContentDispositionFormData(name, null);
+			}
+		}
 
-		MediaType contentType = outputMessage.getHeaders().getContentType();
+		MediaType contentType = outputHeaders.getContentType();
 
 		final ResolvableType finalBodyType = resolvableType;
 		Optional<HttpMessageWriter<?>> writer = this.partWriters.stream()
@@ -269,16 +279,18 @@ public class MultipartHttpMessageWriter implements HttpMessageWriter<MultiValueM
 		Publisher<T> bodyPublisher =
 				body instanceof Publisher ? (Publisher<T>) body : Mono.just(body);
 
-		Mono<Void> partWritten = ((HttpMessageWriter<T>) writer.get())
+		// The writer will call MultipartHttpOutputMessage#write which doesn't actually write
+		// but only stores the body Flux and returns Mono.empty().
+
+		Mono<Void> partContentReady = ((HttpMessageWriter<T>) writer.get())
 				.write(bodyPublisher, resolvableType, contentType, outputMessage, Collections.emptyMap());
 
-		// partWritten.subscribe() is required in order to make sure MultipartHttpOutputMessage#getBody()
-		// returns a non-null value (occurs with ResourceHttpMessageWriter that invokes
-		// ReactiveHttpOutputMessage.writeWith() only when at least one element has been requested).
-		partWritten.subscribe();
+		// After partContentReady, we can access the part content from MultipartHttpOutputMessage
+		// and use it for writing to the actual request body
 
-		return Flux.concat(
-				Mono.just(generateBoundaryLine(boundary)), outputMessage.getBody(), Mono.just(generateNewLine()));
+		Flux<DataBuffer> partContent = partContentReady.thenMany(Flux.defer(outputMessage::getBody));
+
+		return Flux.concat(Mono.just(generateBoundaryLine(boundary)), partContent, Mono.just(generateNewLine()));
 	}
 
 
@@ -356,7 +368,9 @@ public class MultipartHttpMessageWriter implements HttpMessageWriter<MultiValueM
 				return Mono.error(new IllegalStateException("Multiple calls to writeWith() not supported"));
 			}
 			this.body = Flux.just(generateHeaders()).concatWith(body);
-			return this.body.then();
+
+			// We don't actually want to write (just save the body Flux)
+			return Mono.empty();
 		}
 
 		private DataBuffer generateHeaders() {
@@ -390,8 +404,7 @@ public class MultipartHttpMessageWriter implements HttpMessageWriter<MultiValueM
 
 		@Override
 		public Mono<Void> setComplete() {
-			return (this.body != null ? this.body.then() :
-					Mono.error(new IllegalStateException("Body has not been written yet")));
+			return Mono.error(new UnsupportedOperationException());
 		}
 	}
 

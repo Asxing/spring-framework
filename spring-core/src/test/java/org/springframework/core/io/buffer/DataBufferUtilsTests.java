@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2017 the original author or authors.
+ * Copyright 2002-2018 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,7 +16,6 @@
 
 package org.springframework.core.io.buffer;
 
-import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.URI;
 import java.nio.ByteBuffer;
@@ -24,6 +23,7 @@ import java.nio.channels.AsynchronousFileChannel;
 import java.nio.channels.FileChannel;
 import java.nio.channels.ReadableByteChannel;
 import java.nio.channels.WritableByteChannel;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -31,6 +31,7 @@ import java.nio.file.StandardOpenOption;
 import java.time.Duration;
 import java.util.stream.Collectors;
 
+import io.netty.buffer.ByteBuf;
 import org.junit.Test;
 import org.mockito.stubbing.Answer;
 import reactor.core.publisher.Flux;
@@ -38,6 +39,7 @@ import reactor.test.StepVerifier;
 
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.core.io.Resource;
+import org.springframework.core.io.buffer.support.DataBufferTestUtils;
 
 import static org.junit.Assert.*;
 import static org.mockito.ArgumentMatchers.any;
@@ -49,10 +51,11 @@ import static org.mockito.Mockito.*;
 public class DataBufferUtilsTests extends AbstractDataBufferAllocatingTestCase {
 
 	@Test
-	public void readReadableByteChannel() throws Exception {
+	public void readByteChannel() throws Exception {
 		URI uri = DataBufferUtilsTests.class.getResource("DataBufferUtilsTests.txt").toURI();
-		FileChannel channel = FileChannel.open(Paths.get(uri), StandardOpenOption.READ);
-		Flux<DataBuffer> flux = DataBufferUtils.read(channel, this.bufferFactory, 3);
+		Flux<DataBuffer> flux =
+				DataBufferUtils.readByteChannel(() -> FileChannel.open(Paths.get(uri), StandardOpenOption.READ),
+						this.bufferFactory, 3);
 
 		StepVerifier.create(flux)
 				.consumeNextWith(stringConsumer("foo"))
@@ -61,16 +64,14 @@ public class DataBufferUtilsTests extends AbstractDataBufferAllocatingTestCase {
 				.consumeNextWith(stringConsumer("qux"))
 				.expectComplete()
 				.verify(Duration.ofSeconds(5));
-
-		assertFalse(channel.isOpen());
 	}
 
 	@Test
 	public void readAsynchronousFileChannel() throws Exception {
 		URI uri = DataBufferUtilsTests.class.getResource("DataBufferUtilsTests.txt").toURI();
-		AsynchronousFileChannel
-				channel = AsynchronousFileChannel.open(Paths.get(uri), StandardOpenOption.READ);
-		Flux<DataBuffer> flux = DataBufferUtils.read(channel, this.bufferFactory, 3);
+		Flux<DataBuffer> flux = DataBufferUtils.readAsynchronousFileChannel(
+				() -> AsynchronousFileChannel.open(Paths.get(uri), StandardOpenOption.READ),
+				this.bufferFactory, 3);
 
 		StepVerifier.create(flux)
 				.consumeNextWith(stringConsumer("foo"))
@@ -84,9 +85,9 @@ public class DataBufferUtilsTests extends AbstractDataBufferAllocatingTestCase {
 	@Test
 	public void readAsynchronousFileChannelPosition() throws Exception {
 		URI uri = DataBufferUtilsTests.class.getResource("DataBufferUtilsTests.txt").toURI();
-		AsynchronousFileChannel
-				channel = AsynchronousFileChannel.open(Paths.get(uri), StandardOpenOption.READ);
-		Flux<DataBuffer> flux = DataBufferUtils.read(channel, 3, this.bufferFactory, 3);
+		Flux<DataBuffer> flux = DataBufferUtils.readAsynchronousFileChannel(
+				() -> AsynchronousFileChannel.open(Paths.get(uri), StandardOpenOption.READ),
+				3, this.bufferFactory, 3);
 
 		StepVerifier.create(flux)
 				.consumeNextWith(stringConsumer("bar"))
@@ -97,25 +98,10 @@ public class DataBufferUtilsTests extends AbstractDataBufferAllocatingTestCase {
 	}
 
 	@Test
-	public void readUnalignedChannel() throws Exception {
-		URI uri = DataBufferUtilsTests.class.getResource("DataBufferUtilsTests.txt").toURI();
-		FileChannel channel = FileChannel.open(Paths.get(uri), StandardOpenOption.READ);
-		Flux<DataBuffer> flux = DataBufferUtils.read(channel, this.bufferFactory, 5);
-
-		StepVerifier.create(flux)
-				.consumeNextWith(stringConsumer("fooba"))
-				.consumeNextWith(stringConsumer("rbazq"))
-				.consumeNextWith(stringConsumer("ux"))
-				.expectComplete()
-				.verify(Duration.ofSeconds(5));
-
-		assertFalse(channel.isOpen());
-	}
-
-	@Test
 	public void readInputStream() throws Exception {
-		InputStream is = DataBufferUtilsTests.class.getResourceAsStream("DataBufferUtilsTests.txt");
-		Flux<DataBuffer> flux = DataBufferUtils.read(is, this.bufferFactory, 3);
+		Flux<DataBuffer> flux = DataBufferUtils.readInputStream(
+				() -> DataBufferUtilsTests.class.getResourceAsStream("DataBufferUtilsTests.txt"),
+				this.bufferFactory, 3);
 
 		StepVerifier.create(flux)
 				.consumeNextWith(stringConsumer("foo"))
@@ -293,27 +279,35 @@ public class DataBufferUtilsTests extends AbstractDataBufferAllocatingTestCase {
 
 		flux.subscribe(DataBufferUtils.releaseConsumer());
 
-		// AbstractDataBufferAllocatingTestCase.LeakDetector will assert the release of the buffers
+		assertReleased(foo);
+		assertReleased(bar);
+		assertReleased(baz);
+	}
+	
+	private static void assertReleased(DataBuffer dataBuffer) {
+		if (dataBuffer instanceof NettyDataBuffer) {
+			ByteBuf byteBuf = ((NettyDataBuffer) dataBuffer).getNativeBuffer();
+			assertEquals(0, byteBuf.refCnt());
+		}
 	}
 
 	@Test
 	public void SPR16070() throws Exception {
 		ReadableByteChannel channel = mock(ReadableByteChannel.class);
 		when(channel.read(any()))
-				.thenAnswer(putByte(1))
-				.thenAnswer(putByte(2))
-				.thenAnswer(putByte(3))
+				.thenAnswer(putByte('a'))
+				.thenAnswer(putByte('b'))
+				.thenAnswer(putByte('c'))
 				.thenReturn(-1);
 
-		Flux<DataBuffer> read = DataBufferUtils.read(channel, this.bufferFactory, 1);
+		Flux<DataBuffer> read = DataBufferUtils.readByteChannel(() -> channel, this.bufferFactory, 1);
 
-		StepVerifier.create(
-				read.reduce(DataBuffer::write)
-						.map(this::dataBufferToBytes)
-						.map(this::encodeHexString)
-		)
-				.expectNext("010203")
-				.verifyComplete();
+		StepVerifier.create(read)
+				.consumeNextWith(stringConsumer("a"))
+				.consumeNextWith(stringConsumer("b"))
+				.consumeNextWith(stringConsumer("c"))
+				.expectComplete()
+				.verify(Duration.ofSeconds(5));
 
 	}
 
@@ -325,27 +319,18 @@ public class DataBufferUtilsTests extends AbstractDataBufferAllocatingTestCase {
 		};
 	}
 
-	private byte[] dataBufferToBytes(DataBuffer buffer) {
-		try {
-			int byteCount = buffer.readableByteCount();
-			byte[] bytes = new byte[byteCount];
-			buffer.read(bytes);
-			return bytes;
-		}
-		finally {
-			release(buffer);
-		}
+	@Test
+	public void join() {
+		DataBuffer foo = stringBuffer("foo");
+		DataBuffer bar = stringBuffer("bar");
+		DataBuffer baz = stringBuffer("baz");
+		Flux<DataBuffer> flux = Flux.just(foo, bar, baz);
+
+		DataBuffer result = DataBufferUtils.join(flux).block(Duration.ofSeconds(5));
+
+		assertEquals("foobarbaz", DataBufferTestUtils.dumpString(result, StandardCharsets.UTF_8));
+
+		release(result);
 	}
-
-	private String encodeHexString(byte[] data) {
-		StringBuilder builder = new StringBuilder();
-		for (byte b : data) {
-			builder.append((0xF0 & b) >>> 4);
-			builder.append(0x0F & b);
-		}
-		return builder.toString();
-	}
-
-
 
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2017 the original author or authors.
+ * Copyright 2002-2018 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -28,9 +28,9 @@ import java.nio.channels.CompletionHandler;
 import java.nio.channels.ReadableByteChannel;
 import java.nio.channels.WritableByteChannel;
 import java.nio.file.StandardOpenOption;
+import java.util.concurrent.Callable;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
-import java.util.function.BiFunction;
 import java.util.function.Consumer;
 
 import org.reactivestreams.Publisher;
@@ -38,6 +38,7 @@ import org.reactivestreams.Subscription;
 import reactor.core.publisher.BaseSubscriber;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.FluxSink;
+import reactor.core.publisher.Mono;
 import reactor.core.publisher.SynchronousSink;
 
 import org.springframework.core.io.Resource;
@@ -55,74 +56,165 @@ public abstract class DataBufferUtils {
 
 	private static final Consumer<DataBuffer> RELEASE_CONSUMER = DataBufferUtils::release;
 
+
 	//---------------------------------------------------------------------
 	// Reading
 	//---------------------------------------------------------------------
 
 	/**
-	 * Read the given {@code InputStream} into a {@code Flux} of
+	 * Read the given {@code InputStream} into a <strong>read-once</strong> {@code Flux} of
 	 * {@code DataBuffer}s. Closes the input stream when the flux is terminated.
+	 * <p>The resulting {@code Flux} can only be subscribed to once. See
+	 * {@link #readInputStream(Callable, DataBufferFactory, int)} for a variant that supports
+	 * multiple subscriptions.
 	 * @param inputStream the input stream to read from
 	 * @param dataBufferFactory the factory to create data buffers with
 	 * @param bufferSize the maximum size of the data buffers
 	 * @return a flux of data buffers read from the given channel
+	 * @deprecated as of Spring 5.0.3, in favor of
+	 * {@link #readInputStream(Callable, DataBufferFactory, int)}, to be removed in Spring 5.1
 	 */
-	public static Flux<DataBuffer> read(InputStream inputStream,
-			DataBufferFactory dataBufferFactory, int bufferSize) {
+	@Deprecated
+	public static Flux<DataBuffer> read(
+			InputStream inputStream, DataBufferFactory dataBufferFactory, int bufferSize) {
 
-		Assert.notNull(inputStream, "InputStream must not be null");
-
-		ReadableByteChannel channel = Channels.newChannel(inputStream);
-		return read(channel, dataBufferFactory, bufferSize);
+		return readInputStream(() -> inputStream, dataBufferFactory, bufferSize);
 	}
 
 	/**
-	 * Read the given {@code ReadableByteChannel} into a {@code Flux} of
-	 * {@code DataBuffer}s. Closes the channel when the flux is terminated.
-	 * @param channel the channel to read from
+	 * Obtain a {@link InputStream} from the given supplier, and read it into a {@code Flux}
+	 * of {@code DataBuffer}s. Closes the input stream when the flux is terminated.
+	 * @param inputStreamSupplier the supplier for the input stream to read from
 	 * @param dataBufferFactory the factory to create data buffers with
 	 * @param bufferSize the maximum size of the data buffers
 	 * @return a flux of data buffers read from the given channel
 	 */
-	public static Flux<DataBuffer> read(ReadableByteChannel channel,
-			DataBufferFactory dataBufferFactory, int bufferSize) {
+	public static Flux<DataBuffer> readInputStream(
+			Callable<InputStream> inputStreamSupplier, DataBufferFactory dataBufferFactory, int bufferSize) {
 
-		Assert.notNull(channel, "ReadableByteChannel must not be null");
-		Assert.notNull(dataBufferFactory, "DataBufferFactory must not be null");
+		Assert.notNull(inputStreamSupplier, "'inputStreamSupplier' must not be null");
+
+		return readByteChannel(() -> Channels.newChannel(inputStreamSupplier.call()), dataBufferFactory, bufferSize);
+	}
+
+	/**
+	 * Read the given {@code ReadableByteChannel} into a <strong>read-once</strong> {@code Flux}
+	 * of {@code DataBuffer}s. Closes the channel when the flux is terminated.
+	 * <p>The resulting {@code Flux} can only be subscribed to once. See
+	 * {@link #readByteChannel(Callable, DataBufferFactory, int)} for a variant that supports
+	 * multiple subscriptions.
+	 * @param channel the channel to read from
+	 * @param dataBufferFactory the factory to create data buffers with
+	 * @param bufferSize the maximum size of the data buffers
+	 * @return a flux of data buffers read from the given channel
+	 * @deprecated as of Spring 5.0.3, in favor of
+	 * {@link #readByteChannel(Callable, DataBufferFactory, int)}, to be removed in Spring 5.1
+	 */
+	@Deprecated
+	public static Flux<DataBuffer> read(
+			ReadableByteChannel channel, DataBufferFactory dataBufferFactory, int bufferSize) {
+
+		return readByteChannel(() -> channel, dataBufferFactory, bufferSize);
+	}
+
+	/**
+	 * Obtain a {@link ReadableByteChannel} from the given supplier, and read it into a
+	 * {@code Flux} of {@code DataBuffer}s. Closes the channel when the flux is terminated.
+	 * @param channelSupplier the supplier for the channel to read from
+	 * @param dataBufferFactory the factory to create data buffers with
+	 * @param bufferSize the maximum size of the data buffers
+	 * @return a flux of data buffers read from the given channel
+	 */
+	public static Flux<DataBuffer> readByteChannel(
+			Callable<ReadableByteChannel> channelSupplier, DataBufferFactory dataBufferFactory, int bufferSize) {
+
+		Assert.notNull(channelSupplier, "'channelSupplier' must not be null");
+		Assert.notNull(dataBufferFactory, "'dataBufferFactory' must not be null");
 		Assert.isTrue(bufferSize > 0, "'bufferSize' must be > 0");
 
-		return Flux.generate(() -> channel,
-				new ReadableByteChannelGenerator(dataBufferFactory, bufferSize),
-				DataBufferUtils::closeChannel);
+		return Flux.using(channelSupplier,
+				channel -> {
+					ReadableByteChannelGenerator generator =
+							new ReadableByteChannelGenerator(channel, dataBufferFactory,
+									bufferSize);
+					return Flux.generate(generator);
+				},
+				DataBufferUtils::closeChannel
+		);
 	}
 
 	/**
-	 * Read the given {@code AsynchronousFileChannel} into a {@code Flux} of
-	 * {@code DataBuffer}s. Closes the channel when the flux is terminated.
+	 * Read the given {@code AsynchronousFileChannel} into a <strong>read-once</strong> {@code Flux}
+	 * of {@code DataBuffer}s. Closes the channel when the flux is terminated.
+	 * <p>The resulting {@code Flux} can only be subscribed to once. See
+	 * {@link #readAsynchronousFileChannel(Callable, DataBufferFactory, int)} for a variant that
+	 * supports multiple subscriptions.
 	 * @param channel the channel to read from
 	 * @param dataBufferFactory the factory to create data buffers with
 	 * @param bufferSize the maximum size of the data buffers
 	 * @return a flux of data buffers read from the given channel
+	 * @deprecated as of Spring 5.0.3, in favor of
+	 * {@link #readAsynchronousFileChannel(Callable, DataBufferFactory, int)}, to be removed in
+	 * Spring 5.1
 	 */
-	public static Flux<DataBuffer> read(AsynchronousFileChannel channel,
-			DataBufferFactory dataBufferFactory, int bufferSize) {
-		return read(channel, 0, dataBufferFactory, bufferSize);
+	@Deprecated
+	public static Flux<DataBuffer> read(
+			AsynchronousFileChannel channel, DataBufferFactory dataBufferFactory, int bufferSize) {
+
+		return readAsynchronousFileChannel(() -> channel, dataBufferFactory, bufferSize);
 	}
 
 	/**
-	 * Read the given {@code AsynchronousFileChannel} into a {@code Flux} of
-	 * {@code DataBuffer}s, starting at the given position. Closes the channel when the flux is
+	 * Read the given {@code AsynchronousFileChannel} into a <strong>read-once</strong> {@code Flux}
+	 * of {@code DataBuffer}s, starting at the given position. Closes the channel when the flux is
 	 * terminated.
+	 * <p>The resulting {@code Flux} can only be subscribed to once. See
+	 * {@link #readAsynchronousFileChannel(Callable, long, DataBufferFactory, int)} for a variant
+	 * that supports multiple subscriptions.
 	 * @param channel the channel to read from
 	 * @param position the position to start reading from
 	 * @param dataBufferFactory the factory to create data buffers with
 	 * @param bufferSize the maximum size of the data buffers
 	 * @return a flux of data buffers read from the given channel
+	 * @deprecated as of Spring 5.0.3, in favor of
+	 * {@link #readAsynchronousFileChannel(Callable, long, DataBufferFactory, int)}, to be removed
+	 * in Spring 5.1
 	 */
-	public static Flux<DataBuffer> read(AsynchronousFileChannel channel,
+	@Deprecated
+	public static Flux<DataBuffer> read(
+			AsynchronousFileChannel channel, long position, DataBufferFactory dataBufferFactory, int bufferSize) {
+
+		return readAsynchronousFileChannel(() -> channel, position, dataBufferFactory, bufferSize);
+	}
+
+	/**
+	 * Obtain a {@code AsynchronousFileChannel} from the given supplier, and read it into a
+	 * {@code Flux} of {@code DataBuffer}s. Closes the channel when the flux is terminated.
+	 * @param channelSupplier the supplier for the channel to read from
+	 * @param dataBufferFactory the factory to create data buffers with
+	 * @param bufferSize the maximum size of the data buffers
+	 * @return a flux of data buffers read from the given channel
+	 */
+	public static Flux<DataBuffer> readAsynchronousFileChannel(
+			Callable<AsynchronousFileChannel> channelSupplier, DataBufferFactory dataBufferFactory, int bufferSize) {
+
+		return readAsynchronousFileChannel(channelSupplier, 0, dataBufferFactory, bufferSize);
+	}
+
+	/**
+	 * Obtain a {@code AsynchronousFileChannel} from the given supplier, and read it into a
+	 * {@code Flux} of {@code DataBuffer}s, starting at the given position. Closes the
+	 * channel when the flux is terminated.
+	 * @param channelSupplier the supplier for the channel to read from
+	 * @param position the position to start reading from
+	 * @param dataBufferFactory the factory to create data buffers with
+	 * @param bufferSize the maximum size of the data buffers
+	 * @return a flux of data buffers read from the given channel
+	 */
+	public static Flux<DataBuffer> readAsynchronousFileChannel(Callable<AsynchronousFileChannel> channelSupplier,
 			long position, DataBufferFactory dataBufferFactory, int bufferSize) {
 
-		Assert.notNull(channel, "'channel' must not be null");
+		Assert.notNull(channelSupplier, "'channelSupplier' must not be null");
 		Assert.notNull(dataBufferFactory, "'dataBufferFactory' must not be null");
 		Assert.isTrue(position >= 0, "'position' must be >= 0");
 		Assert.isTrue(bufferSize > 0, "'bufferSize' must be > 0");
@@ -130,29 +222,30 @@ public abstract class DataBufferUtils {
 		DataBuffer dataBuffer = dataBufferFactory.allocateBuffer(bufferSize);
 		ByteBuffer byteBuffer = dataBuffer.asByteBuffer(0, bufferSize);
 
-		return Flux.create(sink -> {
-			sink.onDispose(() -> closeChannel(channel));
-			CompletionHandler<Integer, DataBuffer> completionHandler =
-					new AsynchronousFileChannelReadCompletionHandler(channel, sink, position,
-							dataBufferFactory, bufferSize);
-			channel.read(byteBuffer, position, dataBuffer, completionHandler);
-		});
+		return Flux.using(channelSupplier,
+				channel -> Flux.create(sink -> {
+							CompletionHandler<Integer, DataBuffer> completionHandler =
+									new AsynchronousFileChannelReadCompletionHandler(channel,
+											sink, position, dataBufferFactory, bufferSize);
+							channel.read(byteBuffer, position, dataBuffer, completionHandler);
+						}),
+				DataBufferUtils::closeChannel);
 	}
 
 	/**
 	 * Read the given {@code Resource} into a {@code Flux} of {@code DataBuffer}s.
 	 * <p>If the resource is a file, it is read into an
 	 * {@code AsynchronousFileChannel} and turned to {@code Flux} via
-	 * {@link #read(AsynchronousFileChannel, DataBufferFactory, int)} or else
-	 * fall back on {@link #read(InputStream, DataBufferFactory, int)} closes
-	 * the channel when the flux is terminated.
+	 * {@link #readAsynchronousFileChannel(Callable, DataBufferFactory, int)} or else
+	 * fall back to {@link #readByteChannel(Callable, DataBufferFactory, int)}.
+	 * Closes the channel when the flux is terminated.
 	 * @param resource the resource to read from
 	 * @param dataBufferFactory the factory to create data buffers with
 	 * @param bufferSize the maximum size of the data buffers
 	 * @return a flux of data buffers read from the given channel
 	 */
-	public static Flux<DataBuffer> read(Resource resource,
-			DataBufferFactory dataBufferFactory, int bufferSize) {
+	public static Flux<DataBuffer> read(
+			Resource resource, DataBufferFactory dataBufferFactory, int bufferSize) {
 
 		return read(resource, 0, dataBufferFactory, bufferSize);
 	}
@@ -162,38 +255,32 @@ public abstract class DataBufferUtils {
 	 * starting at the given position.
 	 * <p>If the resource is a file, it is read into an
 	 * {@code AsynchronousFileChannel} and turned to {@code Flux} via
-	 * {@link #read(AsynchronousFileChannel, DataBufferFactory, int)} or else
-	 * fall back on {@link #read(InputStream, DataBufferFactory, int)}. Closes
-	 * the channel when the flux is terminated.
+	 * {@link #readAsynchronousFileChannel(Callable, DataBufferFactory, int)} or else
+	 * fall back on {@link #readByteChannel(Callable, DataBufferFactory, int)}.
+	 * Closes the channel when the flux is terminated.
 	 * @param resource the resource to read from
 	 * @param position the position to start reading from
 	 * @param dataBufferFactory the factory to create data buffers with
 	 * @param bufferSize the maximum size of the data buffers
 	 * @return a flux of data buffers read from the given channel
 	 */
-	public static Flux<DataBuffer> read(Resource resource, long position,
-			DataBufferFactory dataBufferFactory, int bufferSize) {
+	public static Flux<DataBuffer> read(
+			Resource resource, long position, DataBufferFactory dataBufferFactory, int bufferSize) {
 
 		try {
 			if (resource.isFile()) {
 				File file = resource.getFile();
-				AsynchronousFileChannel channel =
-						AsynchronousFileChannel.open(file.toPath(), StandardOpenOption.READ);
-				return DataBufferUtils.read(channel, position, dataBufferFactory, bufferSize);
+				return readAsynchronousFileChannel(
+						() -> AsynchronousFileChannel.open(file.toPath(), StandardOpenOption.READ),
+						position, dataBufferFactory, bufferSize);
 			}
 		}
 		catch (IOException ignore) {
 			// fallback to resource.readableChannel(), below
 		}
 
-		try {
-			ReadableByteChannel channel = resource.readableChannel();
-			Flux<DataBuffer> in = DataBufferUtils.read(channel, dataBufferFactory, bufferSize);
-			return DataBufferUtils.skipUntilByteCount(in, position);
-		}
-		catch (IOException ex) {
-			return Flux.error(ex);
-		}
+		Flux<DataBuffer> result = readByteChannel(resource::readableChannel, dataBufferFactory, bufferSize);
+		return position == 0 ? result : skipUntilByteCount(result, position);
 	}
 
 
@@ -207,16 +294,13 @@ public abstract class DataBufferUtils {
 	 * <strong>not</strong> {@linkplain #release(DataBuffer) release} the data buffers in the
 	 * source. If releasing is required, then subscribe to the returned {@code Flux} with a
 	 * {@link #releaseConsumer()}.
-	 * <p>Note that the writing process does not start until the returned {@code Flux} is subscribed
-	 * to.
+	 * <p>Note that the writing process does not start until the returned {@code Flux} is subscribed to.
 	 * @param source the stream of data buffers to be written
 	 * @param outputStream the output stream to write to
 	 * @return a flux containing the same buffers as in {@code source}, that starts the writing
 	 * process when subscribed to, and that publishes any writing errors and the completion signal
 	 */
-	public static Flux<DataBuffer> write(Publisher<DataBuffer> source,
-			OutputStream outputStream) {
-
+	public static Flux<DataBuffer> write(Publisher<DataBuffer> source, OutputStream outputStream) {
 		Assert.notNull(source, "'source' must not be null");
 		Assert.notNull(outputStream, "'outputStream' must not be null");
 
@@ -230,21 +314,17 @@ public abstract class DataBufferUtils {
 	 * <strong>not</strong> {@linkplain #release(DataBuffer) release} the data buffers in the
 	 * source. If releasing is required, then subscribe to the returned {@code Flux} with a
 	 * {@link #releaseConsumer()}.
-	 * <p>Note that the writing process does not start until the returned {@code Flux} is subscribed
-	 * to.
+	 * <p>Note that the writing process does not start until the returned {@code Flux} is subscribed to.
 	 * @param source the stream of data buffers to be written
 	 * @param channel the channel to write to
 	 * @return a flux containing the same buffers as in {@code source}, that starts the writing
 	 * process when subscribed to, and that publishes any writing errors and the completion signal
 	 */
-	public static Flux<DataBuffer> write(Publisher<DataBuffer> source,
-			WritableByteChannel channel) {
-
+	public static Flux<DataBuffer> write(Publisher<DataBuffer> source, WritableByteChannel channel) {
 		Assert.notNull(source, "'source' must not be null");
 		Assert.notNull(channel, "'channel' must not be null");
 
 		Flux<DataBuffer> flux = Flux.from(source);
-
 		return Flux.create(sink ->
 				flux.subscribe(dataBuffer -> {
 							try {
@@ -269,39 +349,38 @@ public abstract class DataBufferUtils {
 	 * <strong>not</strong> {@linkplain #release(DataBuffer) release} the data buffers in the
 	 * source. If releasing is required, then subscribe to the returned {@code Flux} with a
 	 * {@link #releaseConsumer()}.
-	 * <p>Note that the writing process does not start until the returned {@code Flux} is subscribed
-	 * to.
+	 * <p>Note that the writing process does not start until the returned {@code Flux} is subscribed to.
 	 * @param source the stream of data buffers to be written
 	 * @param channel the channel to write to
 	 * @return a flux containing the same buffers as in {@code source}, that starts the writing
 	 * process when subscribed to, and that publishes any writing errors and the completion signal
 	 */
-	public static Flux<DataBuffer> write(Publisher<DataBuffer> source, AsynchronousFileChannel channel,
-			long position) {
+	public static Flux<DataBuffer> write(
+			Publisher<DataBuffer> source, AsynchronousFileChannel channel, long position) {
 
 		Assert.notNull(source, "'source' must not be null");
 		Assert.notNull(channel, "'channel' must not be null");
 		Assert.isTrue(position >= 0, "'position' must be >= 0");
 
 		Flux<DataBuffer> flux = Flux.from(source);
-
-		return Flux.create(sink -> {
-			BaseSubscriber<DataBuffer> subscriber =
-					new AsynchronousFileChannelWriteCompletionHandler(sink, channel, position);
-			flux.subscribe(subscriber);
-		});
+		return Flux.create(sink ->
+				flux.subscribe(new AsynchronousFileChannelWriteCompletionHandler(sink, channel, position)));
 	}
-
 
 	private static void closeChannel(@Nullable Channel channel) {
-		try {
-			if (channel != null) {
+		if (channel != null && channel.isOpen()) {
+			try {
 				channel.close();
 			}
-		}
-		catch (IOException ignored) {
+			catch (IOException ignored) {
+			}
 		}
 	}
+
+
+	//---------------------------------------------------------------------
+	// Various
+	//---------------------------------------------------------------------
 
 	/**
 	 * Relay buffers from the given {@link Publisher} until the total
@@ -334,10 +413,6 @@ public abstract class DataBufferUtils {
 					}
 				});
 	}
-
-	//---------------------------------------------------------------------
-	// Various
-	//---------------------------------------------------------------------
 
 	/**
 	 * Skip buffers from the given {@link Publisher} until the total
@@ -396,61 +471,82 @@ public abstract class DataBufferUtils {
 	 * @return {@code true} if the buffer was released; {@code false} otherwise.
 	 */
 	public static boolean release(@Nullable DataBuffer dataBuffer) {
-		if (dataBuffer instanceof PooledDataBuffer) {
-			return ((PooledDataBuffer) dataBuffer).release();
-		}
-		return false;
+		return (dataBuffer instanceof PooledDataBuffer && ((PooledDataBuffer) dataBuffer).release());
 	}
 
 	/**
-	 * Returns a consumer that calls {@link #release(DataBuffer)} on all
+	 * Return a consumer that calls {@link #release(DataBuffer)} on all
 	 * passed data buffers.
 	 */
 	public static Consumer<DataBuffer> releaseConsumer() {
 		return RELEASE_CONSUMER;
 	}
 
+	/**
+	 * Return a new {@code DataBuffer} composed of the {@code dataBuffers} elements joined together.
+	 * Depending on the {@link DataBuffer} implementation, the returned buffer may be a single
+	 * buffer containing all data of the provided buffers, or it may be a true composite that
+	 * contains references to the buffers.
+	 * @param dataBuffers the data buffers that are to be composed
+	 * @return a buffer that is composed from the {@code dataBuffers} argument
+	 * @since 5.0.3
+	 */
+	public static Mono<DataBuffer> join(Publisher<DataBuffer> dataBuffers) {
+		Assert.notNull(dataBuffers, "'dataBuffers' must not be null");
 
-	private static class ReadableByteChannelGenerator
-			implements BiFunction<ReadableByteChannel, SynchronousSink<DataBuffer>, ReadableByteChannel> {
+		return Flux.from(dataBuffers)
+				.collectList()
+				.filter(list -> !list.isEmpty())
+				.map(list -> {
+					DataBufferFactory bufferFactory = list.get(0).factory();
+					return bufferFactory.join(list);
+				});
+	}
+
+
+	private static class ReadableByteChannelGenerator implements Consumer<SynchronousSink<DataBuffer>> {
+
+		private final ReadableByteChannel channel;
 
 		private final DataBufferFactory dataBufferFactory;
 
 		private final int bufferSize;
 
-		public ReadableByteChannelGenerator(DataBufferFactory dataBufferFactory, int bufferSize) {
+		public ReadableByteChannelGenerator(
+				ReadableByteChannel channel, DataBufferFactory dataBufferFactory, int bufferSize) {
+
+			this.channel = channel;
 			this.dataBufferFactory = dataBufferFactory;
 			this.bufferSize = bufferSize;
 		}
 
 		@Override
-		public ReadableByteChannel apply(ReadableByteChannel channel,
-				SynchronousSink<DataBuffer> sub) {
+		public void accept(SynchronousSink<DataBuffer> sink) {
 			boolean release = true;
 			DataBuffer dataBuffer = this.dataBufferFactory.allocateBuffer(this.bufferSize);
 			try {
 				int read;
 				ByteBuffer byteBuffer = dataBuffer.asByteBuffer(0, dataBuffer.capacity());
-				if ((read = channel.read(byteBuffer)) >= 0) {
+				if ((read = this.channel.read(byteBuffer)) >= 0) {
 					dataBuffer.writePosition(read);
 					release = false;
-					sub.next(dataBuffer);
+					sink.next(dataBuffer);
 				}
 				else {
-					sub.complete();
+					sink.complete();
 				}
 			}
 			catch (IOException ex) {
-				sub.error(ex);
+				sink.error(ex);
 			}
 			finally {
 				if (release) {
 					release(dataBuffer);
 				}
 			}
-			return channel;
 		}
 	}
+
 
 	private static class AsynchronousFileChannelReadCompletionHandler
 			implements CompletionHandler<Integer, DataBuffer> {
@@ -463,11 +559,13 @@ public abstract class DataBufferUtils {
 
 		private final int bufferSize;
 
-		private AtomicLong position;
+		private final AtomicLong position;
 
-		private AsynchronousFileChannelReadCompletionHandler(
-				AsynchronousFileChannel channel, FluxSink<DataBuffer> sink,
-				long position, DataBufferFactory dataBufferFactory, int bufferSize) {
+		private final AtomicBoolean disposed = new AtomicBoolean();
+
+		public AsynchronousFileChannelReadCompletionHandler(AsynchronousFileChannel channel,
+				FluxSink<DataBuffer> sink, long position, DataBufferFactory dataBufferFactory, int bufferSize) {
+
 			this.channel = channel;
 			this.sink = sink;
 			this.position = new AtomicLong(position);
@@ -481,17 +579,14 @@ public abstract class DataBufferUtils {
 				long pos = this.position.addAndGet(read);
 				dataBuffer.writePosition(read);
 				this.sink.next(dataBuffer);
-
-				if (!this.sink.isCancelled()) {
-					DataBuffer newDataBuffer =
-							this.dataBufferFactory.allocateBuffer(this.bufferSize);
+				if (!this.disposed.get()) {
+					DataBuffer newDataBuffer = this.dataBufferFactory.allocateBuffer(this.bufferSize);
 					ByteBuffer newByteBuffer = newDataBuffer.asByteBuffer(0, this.bufferSize);
 					this.channel.read(newByteBuffer, pos, newDataBuffer, this);
 				}
 			}
 			else {
 				release(dataBuffer);
-				closeChannel(this.channel);
 				this.sink.complete();
 			}
 		}
@@ -499,13 +594,12 @@ public abstract class DataBufferUtils {
 		@Override
 		public void failed(Throwable exc, DataBuffer dataBuffer) {
 			release(dataBuffer);
-			closeChannel(this.channel);
 			this.sink.error(exc);
 		}
 	}
 
-	private static class AsynchronousFileChannelWriteCompletionHandler
-			extends BaseSubscriber<DataBuffer>
+
+	private static class AsynchronousFileChannelWriteCompletionHandler extends BaseSubscriber<DataBuffer>
 			implements CompletionHandler<Integer, ByteBuffer> {
 
 		private final FluxSink<DataBuffer> sink;
@@ -521,6 +615,7 @@ public abstract class DataBufferUtils {
 
 		public AsynchronousFileChannelWriteCompletionHandler(
 				FluxSink<DataBuffer> sink, AsynchronousFileChannel channel, long position) {
+
 			this.sink = sink;
 			this.channel = channel;
 			this.position = new AtomicLong(position);
@@ -535,7 +630,6 @@ public abstract class DataBufferUtils {
 		protected void hookOnNext(DataBuffer value) {
 			this.dataBuffer = value;
 			ByteBuffer byteBuffer = value.asByteBuffer();
-
 			this.channel.write(byteBuffer, this.position.get(), byteBuffer, this);
 		}
 
@@ -560,7 +654,6 @@ public abstract class DataBufferUtils {
 				this.channel.write(byteBuffer, pos, byteBuffer, this);
 				return;
 			}
-
 			if (this.dataBuffer != null) {
 				this.sink.next(this.dataBuffer);
 				this.dataBuffer = null;
@@ -578,4 +671,5 @@ public abstract class DataBufferUtils {
 			this.sink.error(exc);
 		}
 	}
+
 }

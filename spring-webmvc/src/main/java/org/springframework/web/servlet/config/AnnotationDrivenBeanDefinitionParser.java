@@ -1,5 +1,5 @@
 /*
- * Copyright 2002-2017 the original author or authors.
+ * Copyright 2002-2018 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -27,7 +27,6 @@ import org.springframework.beans.factory.FactoryBean;
 import org.springframework.beans.factory.InitializingBean;
 import org.springframework.beans.factory.config.BeanDefinition;
 import org.springframework.beans.factory.config.BeanDefinitionHolder;
-import org.springframework.beans.factory.config.BeanReference;
 import org.springframework.beans.factory.config.RuntimeBeanReference;
 import org.springframework.beans.factory.parsing.BeanComponentDefinition;
 import org.springframework.beans.factory.parsing.CompositeComponentDefinition;
@@ -60,7 +59,6 @@ import org.springframework.http.converter.xml.SourceHttpMessageConverter;
 import org.springframework.lang.Nullable;
 import org.springframework.util.Assert;
 import org.springframework.util.ClassUtils;
-import org.springframework.util.StringUtils;
 import org.springframework.util.xml.DomUtils;
 import org.springframework.web.HttpRequestHandler;
 import org.springframework.web.accept.ContentNegotiationManager;
@@ -482,10 +480,8 @@ class AnnotationDrivenBeanDefinitionParser implements BeanDefinitionParser {
 	@Nullable
 	private RuntimeBeanReference getAsyncExecutor(Element element) {
 		Element asyncElement = DomUtils.getChildElementByTagName(element, "async-support");
-		if (asyncElement != null) {
-			if (asyncElement.hasAttribute("task-executor")) {
-				return new RuntimeBeanReference(asyncElement.getAttribute("task-executor"));
-			}
+		if (asyncElement != null && asyncElement.hasAttribute("task-executor")) {
+			return new RuntimeBeanReference(asyncElement.getAttribute("task-executor"));
 		}
 		return null;
 	}
@@ -665,27 +661,6 @@ class AnnotationDrivenBeanDefinitionParser implements BeanDefinitionParser {
 		}
 		return list;
 	}
-
-    private ManagedList<BeanReference> extractBeanRefSubElements(Element parentElement, ParserContext parserContext){
-        ManagedList<BeanReference> list = new ManagedList<>();
-        list.setSource(parserContext.extractSource(parentElement));
-        for (Element refElement : DomUtils.getChildElementsByTagName(parentElement, "ref")) {
-            BeanReference reference;
-            if (StringUtils.hasText("bean")) {
-                reference = new RuntimeBeanReference(refElement.getAttribute("bean"),false);
-                list.add(reference);
-            }
-			else if (StringUtils.hasText("parent")){
-                reference = new RuntimeBeanReference(refElement.getAttribute("parent"),true);
-                list.add(reference);
-            }
-			else {
-                parserContext.getReaderContext().error("'bean' or 'parent' attribute is required for <ref> element",
-                        parserContext.extractSource(parentElement));
-            }
-        }
-        return list;
-    }
 
 
 	/**
