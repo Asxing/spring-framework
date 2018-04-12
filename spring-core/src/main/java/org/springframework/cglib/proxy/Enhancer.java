@@ -56,7 +56,6 @@ import org.springframework.cglib.core.Transformer;
 import org.springframework.cglib.core.TypeUtils;
 import org.springframework.cglib.core.VisibilityPredicate;
 import org.springframework.cglib.core.WeakCacheKey;
-import org.springframework.core.BridgeMethodResolver;
 
 /**
  * Generates dynamic subclasses to enable method interception. This
@@ -1236,8 +1235,7 @@ public class Enhancer extends AbstractClassGenerator {
 			}
 		}
 
-//		final Map bridgeToTarget = new BridgeMethodResolver(declToBridge, getClassLoader()).resolveAll();
-		final Map bridgeToTarget = (new org.springframework.cglib.proxy.BridgeMethodResolver(declToBridge, this.getClassLoader())).resolveAll();
+		final Map bridgeToTarget = new BridgeMethodResolver(declToBridge, getClassLoader()).resolveAll();
 
 		Set seenGen = new HashSet();
 		CodeEmitter se = ce.getStaticHook();

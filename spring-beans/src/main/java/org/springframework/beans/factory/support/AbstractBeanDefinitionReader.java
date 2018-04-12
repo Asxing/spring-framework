@@ -183,7 +183,6 @@ public abstract class AbstractBeanDefinitionReader implements EnvironmentCapable
 	public int loadBeanDefinitions(Resource... resources) throws BeanDefinitionStoreException {
 		Assert.notNull(resources, "Resource array must not be null");
 		int counter = 0;
-		// 每个Resource对应一个配置文件，将其风窗成
 		for (Resource resource : resources) {
 			counter += loadBeanDefinitions(resource);
 		}
@@ -217,12 +216,10 @@ public abstract class AbstractBeanDefinitionReader implements EnvironmentCapable
 					"Cannot import bean definitions from location [" + location + "]: no ResourceLoader available");
 		}
 
-		//  Spring 加载流程使用的 ClassPathXmlApplicationContext 是 ResourcePatternResolver 的实现类
 		if (resourceLoader instanceof ResourcePatternResolver) {
 			// Resource pattern matching available.
 			try {
 				Resource[] resources = ((ResourcePatternResolver) resourceLoader).getResources(location);
-				// 最终代码走到了 XmlBeanDefinitionReader 的 loadBeanDefinitions 方法
 				int loadCount = loadBeanDefinitions(resources);
 				if (actualResources != null) {
 					for (Resource resource : resources) {

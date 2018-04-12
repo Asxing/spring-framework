@@ -356,13 +356,8 @@ public class CachedIntrospectionResults {
 
 	private PropertyDescriptor buildGenericTypeAwarePropertyDescriptor(Class<?> beanClass, PropertyDescriptor pd) {
 		try {
-
-
-			//内省机制 中的 readMethod  writeMethod
 			return new GenericTypeAwarePropertyDescriptor(beanClass, pd.getName(), pd.getReadMethod(),
 					pd.getWriteMethod(), pd.getPropertyEditorClass());
-
-
 		}
 		catch (IntrospectionException ex) {
 			throw new FatalBeanException("Failed to re-introspect class [" + beanClass.getName() + "]", ex);

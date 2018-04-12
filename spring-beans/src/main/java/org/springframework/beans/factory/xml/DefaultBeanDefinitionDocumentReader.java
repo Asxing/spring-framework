@@ -94,9 +94,7 @@ public class DefaultBeanDefinitionDocumentReader implements BeanDefinitionDocume
 	public void registerBeanDefinitions(Document doc, XmlReaderContext readerContext) {
 		this.readerContext = readerContext;
 		logger.debug("Loading bean definitions");
-		// 得到根节点，也就是<beans...></beans>，第一步，拿到根节点
 		Element root = doc.getDocumentElement();
-		// 把根节点传进来了
 		doRegisterBeanDefinitions(root);
 	}
 
@@ -128,19 +126,14 @@ public class DefaultBeanDefinitionDocumentReader implements BeanDefinitionDocume
 		// the new (child) delegate with a reference to the parent for fallback purposes,
 		// then ultimately reset this.delegate back to its original (parent) reference.
 		// this behavior emulates a stack of delegates without actually necessitating one.
-		// 构造出一个Bean定义解析器的委托类
 		BeanDefinitionParserDelegate parent = this.delegate;
 		this.delegate = createDelegate(getReaderContext(), root, parent);
 
-		// 默认的命名空间
 		if (this.delegate.isDefaultNamespace(root)) {
-			// 检查profile属性
 			String profileSpec = root.getAttribute(PROFILE_ATTRIBUTE);
 			if (StringUtils.hasText(profileSpec)) {
-				// profile 属性可以以，分割
 				String[] specifiedProfiles = StringUtils.tokenizeToStringArray(
 						profileSpec, BeanDefinitionParserDelegate.MULTI_VALUE_ATTRIBUTE_DELIMITERS);
-				// profile属性支持！取反
 				if (!getReaderContext().getEnvironment().acceptsProfiles(specifiedProfiles)) {
 					if (logger.isInfoEnabled()) {
 						logger.info("Skipped XML bean definition file due to specified profiles [" + profileSpec +
@@ -151,21 +144,17 @@ public class DefaultBeanDefinitionDocumentReader implements BeanDefinitionDocume
 			}
 		}
 
-		// 供子类去覆盖，目的在于给自雷一个把我们自定义的标签转为Spring标准标签的机会
 		preProcessXml(root);
-		// 使用委托类解析Bean定义，这个方法开始真正遍历XML文件中的各个标签并转换为对应的Bean定义
 		parseBeanDefinitions(root, this.delegate);
 		postProcessXml(root);
 
 		this.delegate = parent;
 	}
 
-	// 根据根节点创建一个Bean定义解析器的委托类
 	protected BeanDefinitionParserDelegate createDelegate(
 			XmlReaderContext readerContext, Element root, @Nullable BeanDefinitionParserDelegate parentDelegate) {
 
 		BeanDefinitionParserDelegate delegate = new BeanDefinitionParserDelegate(readerContext);
-		// 设置默认属性
 		delegate.initDefaults(root, parentDelegate);
 		return delegate;
 	}
@@ -176,21 +165,16 @@ public class DefaultBeanDefinitionDocumentReader implements BeanDefinitionDocume
 	 * @param root the DOM root element of the document
 	 */
 	protected void parseBeanDefinitions(Element root, BeanDefinitionParserDelegate delegate) {
-		// 遍历Element下的节点
 		if (delegate.isDefaultNamespace(root)) {
-			// 拿到所有的子元素
 			NodeList nl = root.getChildNodes();
 			for (int i = 0; i < nl.getLength(); i++) {
-				//拿到每个node
 				Node node = nl.item(i);
 				if (node instanceof Element) {
 					Element ele = (Element) node;
 					if (delegate.isDefaultNamespace(ele)) {
-						// 关键点咯,当遇见<bean id="XXXX" ...>，解析默认的元素，111111111111111111
 						parseDefaultElement(ele, delegate);
 					}
 					else {
-						// <aop:config ...>就会在这执行，解析自定的元素，最关键的，1111111111111111111
 						delegate.parseCustomElement(ele);
 					}
 				}
@@ -201,22 +185,13 @@ public class DefaultBeanDefinitionDocumentReader implements BeanDefinitionDocume
 		}
 	}
 
-	// 判断节点名称是 import、alias、bean，其中任意一个就进入相应的执行逻辑，随便点击进入一个就可以
 	private void parseDefaultElement(Element ele, BeanDefinitionParserDelegate delegate) {
-		// 获取节点名称，import 引入资源
 		if (delegate.nodeNameEquals(ele, IMPORT_ELEMENT)) {
 			importBeanDefinitionResource(ele);
 		}
-		/**
-		 * alias 进行别名的设置
-		 * <alias name="serviceid" alias="holddie1"/>
-		 * <alias name="serviceid" alias="holddie2"/>
-		 * <alias name="serviceid" alias="holddie3"/>
-		 */
 		else if (delegate.nodeNameEquals(ele, ALIAS_ELEMENT)) {
 			processAliasRegistration(ele);
 		}
-		// bean 经常使用
 		else if (delegate.nodeNameEquals(ele, BEAN_ELEMENT)) {
 			processBeanDefinition(ele, delegate);
 		}
@@ -327,14 +302,11 @@ public class DefaultBeanDefinitionDocumentReader implements BeanDefinitionDocume
 	 * and registering it with the registry.
 	 */
 	protected void processBeanDefinition(Element ele, BeanDefinitionParserDelegate delegate) {
-		// 解析Bean定义元素
 		BeanDefinitionHolder bdHolder = delegate.parseBeanDefinitionElement(ele);
 		if (bdHolder != null) {
-			// 在需要的时候装饰Bean定义，比如AOP的场景会使用到
 			bdHolder = delegate.decorateBeanDefinitionIfRequired(ele, bdHolder);
 			try {
 				// Register the final decorated instance.
-				// 注册Bean定义
 				BeanDefinitionReaderUtils.registerBeanDefinition(bdHolder, getReaderContext().getRegistry());
 			}
 			catch (BeanDefinitionStoreException ex) {

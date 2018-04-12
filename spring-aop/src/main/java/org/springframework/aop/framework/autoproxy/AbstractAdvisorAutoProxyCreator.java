@@ -72,7 +72,7 @@ public abstract class AbstractAdvisorAutoProxyCreator extends AbstractAutoProxyC
 	@Nullable
 	protected Object[] getAdvicesAndAdvisorsForBean(
 			Class<?> beanClass, String beanName, @Nullable TargetSource targetSource) {
-        // 顾名思义为指定class寻找合适的Advisor
+
 		List<Advisor> advisors = findEligibleAdvisors(beanClass, beanName);
 		if (advisors.isEmpty()) {
 			return DO_NOT_PROXY;
@@ -91,12 +91,8 @@ public abstract class AbstractAdvisorAutoProxyCreator extends AbstractAutoProxyC
 	 * @see #extendAdvisors
 	 */
 	protected List<Advisor> findEligibleAdvisors(Class<?> beanClass, String beanName) {
-		// 寻找候选 Advisors，根据上文的配置文件，有两个候选 Advisor，分别是 <aop:aspect>
-		// 节点下的 < aop:before > 和 < aop:after > 这两个，这两个在 XML 解析的时候已经被转换生成了 RootBeanDefinition。
 		List<Advisor> candidateAdvisors = findCandidateAdvisors();
-		// 根据候选 Advisors，寻找可以使用的 Advisor
 		List<Advisor> eligibleAdvisors = findAdvisorsThatCanApply(candidateAdvisors, beanClass, beanName);
-		// extendAdvisors 方法作用是向候选 Advisor 链的开头（也就是 List.get(0) 的位置）添加一个 org.springframework.aop.support.DefaultPointcutAdvisor。
 		extendAdvisors(eligibleAdvisors);
 		if (!eligibleAdvisors.isEmpty()) {
 			eligibleAdvisors = sortAdvisors(eligibleAdvisors);

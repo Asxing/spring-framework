@@ -213,17 +213,12 @@ public abstract class PlaceholderConfigurerSupport extends PropertyResourceConfi
 	protected void doProcessProperties(ConfigurableListableBeanFactory beanFactoryToProcess,
 			StringValueResolver valueResolver) {
 
-		// 这是一个Bean定义访问工具，持有字符串解析器，想见通过 BeanDefinitionVistor 访问Bean定义，
-		// 在遇到需要解析的字符串的时候使用构造函数传入的 StringValueResolver 解析字符串
 		BeanDefinitionVisitor visitor = new BeanDefinitionVisitor(valueResolver);
 
-		// 通过BeanFactory 获取所有Bean定义的名称
 		String[] beanNames = beanFactoryToProcess.getBeanDefinitionNames();
-		// 遍历所有Bean定义的名称
 		for (String curName : beanNames) {
 			// Check that we're not parsing our own bean definition,
 			// to avoid failing on unresolvable placeholders in properties file locations.
-			// this.beanName 指的是 PropertyPlaceholderConfigurer 意为 PropertyPlaceholderConfigurer 本身不会去解析占位符“${...}”
 			if (!(curName.equals(this.beanName) && beanFactoryToProcess.equals(this.beanFactory))) {
 				BeanDefinition bd = beanFactoryToProcess.getBeanDefinition(curName);
 				try {

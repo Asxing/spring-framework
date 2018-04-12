@@ -80,20 +80,17 @@ public abstract class AbstractXmlApplicationContext extends AbstractRefreshableC
 	@Override
 	protected void loadBeanDefinitions(DefaultListableBeanFactory beanFactory) throws BeansException, IOException {
 		// Create a new XmlBeanDefinitionReader for the given BeanFactory.
-		// XmlBeanDefinitionReader 是 Bean 加载的核心类
 		XmlBeanDefinitionReader beanDefinitionReader = new XmlBeanDefinitionReader(beanFactory);
 
 		// Configure the bean definition reader with this context's
 		// resource loading environment.
 		beanDefinitionReader.setEnvironment(this.getEnvironment());
-		// 将ResourceLoader装入到XmlBeanDefinitionReader中，因为ApplicationContext继承了ResourceLoader所以此处可以set
 		beanDefinitionReader.setResourceLoader(this);
 		beanDefinitionReader.setEntityResolver(new ResourceEntityResolver(this));
 
 		// Allow a subclass to provide custom initialization of the reader,
 		// then proceed with actually loading the bean definitions.
 		initBeanDefinitionReader(beanDefinitionReader);
-		// 传入xmlBeanDefinitionReader，----111111
 		loadBeanDefinitions(beanDefinitionReader);
 	}
 
@@ -122,15 +119,12 @@ public abstract class AbstractXmlApplicationContext extends AbstractRefreshableC
 	 * @see #getResourcePatternResolver
 	 */
 	protected void loadBeanDefinitions(XmlBeanDefinitionReader reader) throws BeansException, IOException {
-		// 111111 把多个配置文件封装成一个Resource数组，这个Resource对象主要就是获取文件流，或者获取文件名称
 		Resource[] configResources = getConfigResources();
 		if (configResources != null) {
-			// 111111
 			reader.loadBeanDefinitions(configResources);
 		}
 		String[] configLocations = getConfigLocations();
 		if (configLocations != null) {
-			// 直接走到XmlBeanDefinitionReader 的父类AbstractBeanDefinitionReader的loadBeanDefinitions方法中
 			reader.loadBeanDefinitions(configLocations);
 		}
 	}

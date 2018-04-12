@@ -54,7 +54,6 @@ public class BeanDefinitionReaderUtils {
 	 * @return the bean definition
 	 * @throws ClassNotFoundException if the bean class could not be loaded
 	 */
-	// 创建了一个BeanDefinition对象
 	public static AbstractBeanDefinition createBeanDefinition(
 			@Nullable String parentName, @Nullable String className, @Nullable ClassLoader classLoader) throws ClassNotFoundException {
 
@@ -62,7 +61,6 @@ public class BeanDefinitionReaderUtils {
 		bd.setParentName(parentName);
 		if (className != null) {
 			if (classLoader != null) {
-				// 根据类的名称反射出来
 				bd.setBeanClass(ClassUtils.forName(className, classLoader));
 			}
 			else {
@@ -102,11 +100,6 @@ public class BeanDefinitionReaderUtils {
 	 * @throws BeanDefinitionStoreException if no unique name can be generated
 	 * for the given bean definition
 	 */
-	/**
-	 * 假如是 innerBean（比如 Spring AOP 产生的 Bean），使用【类全路径 +#+ 对象 HashCode 的 16 进制】的格式来命名 Bean
-	 * 假如不是 innerBean，使用【类全路径 +#+ 数字】的格式来命名 Bean，其中数字指的是，
-	 * 		同一个 Bean 出现 1 次，只要该 Bean 没有 id，就从 0 开始依次向上累加，比如 a.b.c#0、a.b.c#1、a.b.c#2
-	 */
 	public static String generateBeanName(
 			BeanDefinition definition, BeanDefinitionRegistry registry, boolean isInnerBean)
 			throws BeanDefinitionStoreException {
@@ -116,7 +109,6 @@ public class BeanDefinitionReaderUtils {
 			if (definition.getParentName() != null) {
 				generatedBeanName = definition.getParentName() + "$child";
 			}
-			// 工厂方法产生的Bean
 			else if (definition.getFactoryBeanName() != null) {
 				generatedBeanName = definition.getFactoryBeanName() + "$created";
 			}
@@ -135,7 +127,6 @@ public class BeanDefinitionReaderUtils {
 			// Top-level bean: use plain class name.
 			// Increase counter until the id is unique.
 			int counter = -1;
-			// 用类名#自增的数字命名
 			while (counter == -1 || registry.containsBeanDefinition(id)) {
 				counter++;
 				id = generatedBeanName + GENERATED_BEAN_NAME_SEPARATOR + counter;
@@ -156,7 +147,6 @@ public class BeanDefinitionReaderUtils {
 
 		// Register bean definition under primary name.
 		String beanName = definitionHolder.getBeanName();
-		//注册
 		registry.registerBeanDefinition(beanName, definitionHolder.getBeanDefinition());
 
 		// Register aliases for bean name, if any.

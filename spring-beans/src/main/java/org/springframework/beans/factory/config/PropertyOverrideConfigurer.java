@@ -143,7 +143,6 @@ public class PropertyOverrideConfigurer extends PropertyResourceConfigurer {
 	protected void applyPropertyValue(
 			ConfigurableListableBeanFactory factory, String beanName, String property, String value) {
 
-		// 通过BeanFactory获取Bean的名称
 		BeanDefinition bd = factory.getBeanDefinition(beanName);
 		BeanDefinition bdToUse = bd;
 		while (bd != null) {

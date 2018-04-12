@@ -299,8 +299,7 @@ public class XmlBeanDefinitionReader extends AbstractBeanDefinitionReader {
 	 * @throws BeanDefinitionStoreException in case of loading or parsing errors
 	 */
 	@Override
-	public int  loadBeanDefinitions(Resource resource) throws BeanDefinitionStoreException {
-		//把resource对象再次的编码封装
+	public int loadBeanDefinitions(Resource resource) throws BeanDefinitionStoreException {
 		return loadBeanDefinitions(new EncodedResource(resource));
 	}
 
@@ -327,15 +326,12 @@ public class XmlBeanDefinitionReader extends AbstractBeanDefinitionReader {
 					"Detected cyclic loading of " + encodedResource + " - check your import definitions!");
 		}
 		try {
-			// 根据xml文件获取输入字节流，拿到的配置文件的输入流，父类的流方法
 			InputStream inputStream = encodedResource.getResource().getInputStream();
 			try {
-				// 把inputstream 流封装成 InputSource 为后续的dom解析打基础
 				InputSource inputSource = new InputSource(inputStream);
 				if (encodedResource.getEncoding() != null) {
 					inputSource.setEncoding(encodedResource.getEncoding());
 				}
-				// 进入关键---1111
 				return doLoadBeanDefinitions(inputSource, encodedResource.getResource());
 			}
 			finally {
@@ -391,17 +387,7 @@ public class XmlBeanDefinitionReader extends AbstractBeanDefinitionReader {
 	protected int doLoadBeanDefinitions(InputSource inputSource, Resource resource)
 			throws BeanDefinitionStoreException {
 		try {
-			// 进入验证模式，最终出来的是DetectMode，DetectMode的意思是XML文件的验证模式由XML文件本身决定，
-			// 如果是DTD那就是DTD验证，如果是XSD那就是XSD验证
-			// 这两行作用是通过DOM得到org.w3c.dom.Document对象，Document 将XML文件看成一棵树，Document是对这棵树的描述
-			// xml 解析成 Document，这里的解析使用的是 JDK 自带的 DocumentBuilder，
-			// DocumentBuilder 处理 xml 文件输入流，发现两个 <bean> 中定义的 id 重复即
-			// 会抛出 XNIException 异常，最终将导致 Spring 容器启动失败，因此就是Spring不允许两个Bean定义相同的id
-			/**
-			 * 把 XML 解析的DOM对象
-			 */
 			Document doc = doLoadDocument(inputSource, resource);
-			// 继续加载Bean定义的流程 ，把document注册进来
 			return registerBeanDefinitions(doc, resource);
 		}
 		catch (BeanDefinitionStoreException ex) {
@@ -516,10 +502,8 @@ public class XmlBeanDefinitionReader extends AbstractBeanDefinitionReader {
 	 * @see BeanDefinitionDocumentReader#registerBeanDefinitions
 	 */
 	public int registerBeanDefinitions(Document doc, Resource resource) throws BeanDefinitionStoreException {
-		//因为是每个XML文件执行一次registerBeandefinitions方法注册Bean定义，因此整个方法的返回值表示是当前XML里面一共注册了多少个Bean
 		BeanDefinitionDocumentReader documentReader = createBeanDefinitionDocumentReader();
 		int countBefore = getRegistry().getBeanDefinitionCount();
-		// 注册Bean定义
 		documentReader.registerBeanDefinitions(doc, createReaderContext(resource));
 		return getRegistry().getBeanDefinitionCount() - countBefore;
 	}
@@ -531,7 +515,6 @@ public class XmlBeanDefinitionReader extends AbstractBeanDefinitionReader {
 	 * @see #setDocumentReaderClass
 	 */
 	protected BeanDefinitionDocumentReader createBeanDefinitionDocumentReader() {
-		// 反射
 		return BeanDefinitionDocumentReader.class.cast(BeanUtils.instantiateClass(this.documentReaderClass));
 	}
 

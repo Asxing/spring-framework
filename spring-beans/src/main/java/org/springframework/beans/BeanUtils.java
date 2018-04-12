@@ -162,9 +162,6 @@ public abstract class BeanUtils {
 	 * @throws BeanInstantiationException if the bean cannot be instantiated
 	 * @see Constructor#newInstance
 	 */
-	/**
-	 * 通过反射生成Bean的实例，看到前一步有makeAccessible，这意味着即使Bean的构造函数是private，protected的，依然不影响Bean的构造
-	 */
 	public static <T> T instantiateClass(Constructor<T> ctor, Object... args) throws BeanInstantiationException {
 		Assert.notNull(ctor, "Constructor must not be null");
 		try {

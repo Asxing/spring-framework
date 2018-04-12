@@ -115,7 +115,6 @@ public class DefaultNamespaceHandlerResolver implements NamespaceHandlerResolver
 	@Override
 	@Nullable
 	public NamespaceHandler resolve(String namespaceUri) {
-		//111111111111
 		Map<String, Object> handlerMappings = getHandlerMappings();
 		Object handlerOrClassName = handlerMappings.get(namespaceUri);
 		if (handlerOrClassName == null) {
@@ -132,15 +131,8 @@ public class DefaultNamespaceHandlerResolver implements NamespaceHandlerResolver
 					throw new FatalBeanException("Class [" + className + "] for namespace [" + namespaceUri +
 							"] does not implement the [" + NamespaceHandler.class.getName() + "] interface");
 				}
-				//反射出来大的Class类
 				NamespaceHandler namespaceHandler = (NamespaceHandler) BeanUtils.instantiateClass(handlerClass);
-				/**
-				 * 	调用命名空间的init方法，用以向NamespaceHandler对象注册BeanDefinitionParser对象，此接口用以解析顶层（beans下）的非默认命名空间元素，如,<context:annotation-config />
-				 * 	这样就容易理解，每种标签的解析仍然是策略模式的体现，init负责向父类NamespacehandlerSupport 注册不同的策略，由父类的 NamespaceHandlerSupport.parse
-				 * 	方法根据具体的子标签调用相应的子标签完成相应的解析过程
-				 */
 				namespaceHandler.init();
-				// 然后把对应的handler注册到 handlerMappings 里面来
 				handlerMappings.put(namespaceUri, namespaceHandler);
 				return namespaceHandler;
 			}
@@ -165,15 +157,12 @@ public class DefaultNamespaceHandlerResolver implements NamespaceHandlerResolver
 				handlerMappings = this.handlerMappings;
 				if (handlerMappings == null) {
 					try {
-						//加载所有Properties配置文件
 						Properties mappings =
 								PropertiesLoaderUtils.loadAllProperties(this.handlerMappingsLocation, this.classLoader);
 						if (logger.isDebugEnabled()) {
 							logger.debug("Loaded NamespaceHandler mappings: " + mappings);
 						}
-						//创建接收的对象
 						Map<String, Object> mappingsToUse = new ConcurrentHashMap<>(mappings.size());
-						// 循环遍历properties文件，把其中的属性都放置到mappingsToUse中
 						CollectionUtils.mergePropertiesIntoMap(mappings, mappingsToUse);
 						handlerMappings = mappingsToUse;
 						this.handlerMappings = handlerMappings;

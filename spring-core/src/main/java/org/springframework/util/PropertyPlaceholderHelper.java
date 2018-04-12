@@ -121,7 +121,6 @@ public class PropertyPlaceholderHelper {
 	 */
 	public String replacePlaceholders(String value, PlaceholderResolver placeholderResolver) {
 		Assert.notNull(value, "'value' must not be null");
-		// 最终到了替换占位符的核心代码
 		return parseStringValue(value, placeholderResolver, new HashSet<>());
 	}
 
@@ -130,13 +129,10 @@ public class PropertyPlaceholderHelper {
 
 		StringBuilder result = new StringBuilder(value);
 
-		// 获取占位符前缀“${”的位置索引 startIndex
 		int startIndex = value.indexOf(this.placeholderPrefix);
 		while (startIndex != -1) {
-			// 从"{"后面开始获取占位符后缀"}"的位置索引 endIndex
 			int endIndex = findPlaceholderEndIndex(result, startIndex);
 			if (endIndex != -1) {
-				// 如果占位符的前后缀都存在，截取中间的部分 placeHolder
 				String placeholder = result.substring(startIndex + this.placeholderPrefix.length(), endIndex);
 				String originalPlaceholder = placeholder;
 				if (!visitedPlaceholders.add(originalPlaceholder)) {
@@ -146,12 +142,8 @@ public class PropertyPlaceholderHelper {
 				// Recursive invocation, parsing placeholders contained in the placeholder key.
 				placeholder = parseStringValue(placeholder, placeholderResolver, visitedPlaceholders);
 				// Now obtain the value for the fully resolved key...
-				// 从Properties 中获取 placeHolder 对应的值 propval
 				String propVal = placeholderResolver.resolvePlaceholder(placeholder);
 				if (propVal == null && this.valueSeparator != null) {
-					// 若propVal不存在，尝试对placeHolder使用“：”进行一次分割，如果分割出来有结果，那么前面一部分命名为：actualPlaceholder
-					// 后一部分命名为：defaultValue，尝试从 Properties 中获取 actualPlaceholder对应的 value，如果存在则取此value，如果
-					// 不存在则去取defaultValue，最终复制给propVal
 					int separatorIndex = placeholder.indexOf(this.valueSeparator);
 					if (separatorIndex != -1) {
 						String actualPlaceholder = placeholder.substring(0, separatorIndex);

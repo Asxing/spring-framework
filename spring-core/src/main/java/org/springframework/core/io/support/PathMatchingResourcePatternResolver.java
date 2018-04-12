@@ -277,7 +277,6 @@ public class PathMatchingResourcePatternResolver implements ResourcePatternResol
 		Assert.notNull(locationPattern, "Location pattern must not be null");
 		if (locationPattern.startsWith(CLASSPATH_ALL_URL_PREFIX)) {
 			// a class path resource (multiple resources for same name possible)
-			// matcher是一个 AntPathMatcher 对象，isPattern支持ant风格
 			if (getPathMatcher().isPattern(locationPattern.substring(CLASSPATH_ALL_URL_PREFIX.length()))) {
 				// a class path resource pattern
 				return findPathMatchingResources(locationPattern);
@@ -784,7 +783,6 @@ public class PathMatchingResourcePatternResolver implements ResourcePatternResol
 			logger.debug("Searching directory [" + dir.getAbsolutePath() +
 					"] for files matching pattern [" + fullPattern + "]");
 		}
-		// 获取到该路径下所有的路径
 		File[] dirContents = dir.listFiles();
 		if (dirContents == null) {
 			if (logger.isWarnEnabled()) {

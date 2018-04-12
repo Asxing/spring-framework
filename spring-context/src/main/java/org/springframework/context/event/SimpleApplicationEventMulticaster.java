@@ -130,7 +130,6 @@ public class SimpleApplicationEventMulticaster extends AbstractApplicationEventM
 	@Override
 	public void multicastEvent(final ApplicationEvent event, @Nullable ResolvableType eventType) {
 		ResolvableType type = (eventType != null ? eventType : resolveDefaultEventType(event));
-		// 每一个监听器启动一个线程调用run方法，观察者模式
 		for (final ApplicationListener<?> listener : getApplicationListeners(event, type)) {
 			Executor executor = getTaskExecutor();
 			if (executor != null) {
@@ -167,11 +166,9 @@ public class SimpleApplicationEventMulticaster extends AbstractApplicationEventM
 		}
 	}
 
-	// 往SPring容器中注册发布ApplicationEvent，监听器方法将会触发
 	@SuppressWarnings({"unchecked", "rawtypes"})
 	private void doInvokeListener(ApplicationListener listener, ApplicationEvent event) {
 		try {
-			// 触发监听器上面的 onApplicationEvent 方法
 			listener.onApplicationEvent(event);
 		}
 		catch (ClassCastException ex) {

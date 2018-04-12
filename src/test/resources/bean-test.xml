@@ -3,6 +3,12 @@
        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
        xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans.xsd">
 
-	<bean id="serviceA" class="com.holddie.spring.source.ServiceA"/>
+	<bean class="org.springframework.beans.factory.annotation.AutowiredAnnotationBeanPostProcessor" />
+
+	<bean class="org.springframework.beans.factory.annotation.RequiredAnnotationBeanPostProcessor" />
+
+	<bean id="serviceA" class="com.holddie.spring.source.ServiceA">
+		<property name="serviceName" value="Service Name" />
+	</bean>
 	<bean id="serviceB" class="com.holddie.spring.source.ServiceB"/>
 </beans>

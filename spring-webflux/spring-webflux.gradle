@@ -13,6 +13,8 @@ dependencyManagement {
 	applyMavenExclusions = false
 }
 
+
+
 dependencies {
 	compile(project(":spring-beans"))
 	compile(project(":spring-core"))

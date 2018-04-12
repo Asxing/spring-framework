@@ -242,14 +242,8 @@ public abstract class AbstractNestablePropertyAccessor extends AbstractPropertyA
 			throw new NotWritablePropertyException(getRootClass(), this.nestedPath + propertyName,
 					"Nested property in path '" + propertyName + "' does not exist", ex);
 		}
-
-
 		PropertyTokenHolder tokens = getPropertyNameTokens(getFinalPath(nestedPa, propertyName));
-
-
 		nestedPa.setPropertyValue(tokens, new PropertyValue(propertyName, value));
-
-
 	}
 
 	@Override
@@ -277,24 +271,17 @@ public abstract class AbstractNestablePropertyAccessor extends AbstractPropertyA
 	}
 
 	protected void setPropertyValue(PropertyTokenHolder tokens, PropertyValue pv) throws BeansException {
-
-		// 当array、list、map类型数据时，keys数据不为空，里面元素array、list、map的key
 		if (tokens.keys != null) {
 			processKeyedProperty(tokens, pv);
 		}
 		else {
-			// PropertyHandler对象封装了PropertyDescriptor，用jdk反射中的内省机制来获取read、write方法，来读取属性的值
 			processLocalProperty(tokens, pv);
 		}
 	}
 
 	@SuppressWarnings("unchecked")
 	private void processKeyedProperty(PropertyTokenHolder tokens, PropertyValue pv) {
-
-
 		Object propValue = getPropertyHoldingValue(tokens);
-
-
 		PropertyHandler ph = getLocalPropertyHandler(tokens.actualName);
 		if (ph == null) {
 			throw new InvalidPropertyException(
@@ -463,17 +450,11 @@ public abstract class AbstractNestablePropertyAccessor extends AbstractPropertyA
 							}
 						}
 					}
-
-
 					valueToApply = convertForProperty(
 							tokens.canonicalName, oldValue, originalValue, ph.toTypeDescriptor());
-
-
 				}
 				pv.getOriginalPropertyValue().conversionNecessary = (valueToApply != originalValue);
 			}
-
-			//
 			ph.setValue(valueToApply);
 		}
 		catch (TypeMismatchException ex) {
@@ -636,11 +617,7 @@ public abstract class AbstractNestablePropertyAccessor extends AbstractPropertyA
 	protected Object getPropertyValue(PropertyTokenHolder tokens) throws BeansException {
 		String propertyName = tokens.canonicalName;
 		String actualName = tokens.actualName;
-
-		//11111111111jdk 内省机制
 		PropertyHandler ph = getLocalPropertyHandler(actualName);
-
-
 		if (ph == null || !ph.isReadable()) {
 			throw new NotReadablePropertyException(getRootClass(), this.nestedPath + propertyName);
 		}
@@ -1056,8 +1033,6 @@ public abstract class AbstractNestablePropertyAccessor extends AbstractPropertyA
 			this.canonicalName = name;
 		}
 
-
-		// BeanDefinition 名称
 		public String actualName;
 
 		public String canonicalName;

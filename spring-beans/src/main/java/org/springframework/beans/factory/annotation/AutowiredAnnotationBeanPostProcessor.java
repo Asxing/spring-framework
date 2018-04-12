@@ -230,7 +230,6 @@ public class AutowiredAnnotationBeanPostProcessor extends InstantiationAwareBean
 
 	@Override
 	public void postProcessMergedBeanDefinition(RootBeanDefinition beanDefinition, Class<?> beanType, String beanName) {
-		// 用来对当前的 BeanDefinition 进行修改，查找 Bean 中标注 @Autowired 注解的属性变量和方法
 		InjectionMetadata metadata = findAutowiringMetadata(beanName, beanType, null);
 		metadata.checkConfigMembers(beanDefinition);
 	}
@@ -365,16 +364,12 @@ public class AutowiredAnnotationBeanPostProcessor extends InstantiationAwareBean
 		return (candidateConstructors.length > 0 ? candidateConstructors : null);
 	}
 
-	// 对应在Spring的BeanFactory里面的Bean实例化后初始化前调用
 	@Override
 	public PropertyValues postProcessPropertyValues(
 			PropertyValues pvs, PropertyDescriptor[] pds, Object bean, String beanName) throws BeanCreationException {
 
-		// 获取当前Bean里面的依赖元数据信息
 		InjectionMetadata metadata = findAutowiringMetadata(beanName, bean.getClass(), pvs);
 		try {
-			// 逐个调用 InjectionMetadata 内部集合里面存放的属性和方法注解对象的 inject 方法，
-			// 通过反射设置依赖属性值和方法注解对象的 inject 方法
 			metadata.inject(bean, beanName, pvs);
 		}
 		catch (BeanCreationException ex) {
@@ -410,10 +405,8 @@ public class AutowiredAnnotationBeanPostProcessor extends InstantiationAwareBean
 
 	private InjectionMetadata findAutowiringMetadata(String beanName, Class<?> clazz, @Nullable PropertyValues pvs) {
 		// Fall back to class name as cache key, for backwards compatibility with custom callers.
-		// 根据当前 Bean 信息生成缓存 key
 		String cacheKey = (StringUtils.hasLength(beanName) ? beanName : clazz.getName());
 		// Quick check on the concurrent map first, with minimal locking.
-		// 缓存中是否存在当前 Bean 的元数据
 		InjectionMetadata metadata = this.injectionMetadataCache.get(cacheKey);
 		if (InjectionMetadata.needsRefresh(metadata, clazz)) {
 			synchronized (this.injectionMetadataCache) {
@@ -422,9 +415,7 @@ public class AutowiredAnnotationBeanPostProcessor extends InstantiationAwareBean
 					if (metadata != null) {
 						metadata.clear(pvs);
 					}
-					// 不存在则收集，并放入缓存
 					metadata = buildAutowiringMetadata(clazz);
-					// 然后缓存起来
 					this.injectionMetadataCache.put(cacheKey, metadata);
 				}
 			}
@@ -449,7 +440,6 @@ public class AutowiredAnnotationBeanPostProcessor extends InstantiationAwareBean
 						return;
 					}
 					boolean required = determineRequiredStatus(ann);
-					// 对应变量上标注 @Autowired 的变量会创建一个 AutowiredFieldElement 实例用来记录注解信息。
 					currElements.add(new AutowiredFieldElement(field, required));
 				}
 			});
@@ -475,14 +465,13 @@ public class AutowiredAnnotationBeanPostProcessor extends InstantiationAwareBean
 					}
 					boolean required = determineRequiredStatus(ann);
 					PropertyDescriptor pd = BeanUtils.findPropertyForMethod(bridgedMethod, clazz);
-					// 把对应在 set 方法上标注@Autowired 的方法会创建一个 AutowiredMethodElement 对象来保存注解信息
 					currElements.add(new AutowiredMethodElement(method, required, pd));
 				}
 			});
 
 			elements.addAll(0, currElements);
 			targetClass = targetClass.getSuperclass();
-		}// 然后递归当前类的直接父类里面的注解，并把最远父类到当前类里面的注解信息一次放置到 elements
+		}
 		while (targetClass != null && targetClass != Object.class);
 
 		return new InjectionMetadata(clazz, elements);

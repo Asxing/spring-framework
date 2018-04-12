@@ -148,12 +148,10 @@ public class RequiredAnnotationBeanPostProcessor extends InstantiationAwareBeanP
 			if (!shouldSkip(this.beanFactory, beanName)) {
 				List<String> invalidProperties = new ArrayList<>();
 				for (PropertyDescriptor pd : pds) {
-					// 判断属性的set方法是否标注了 @Required 注解，并且该属性没有被设置
 					if (isRequiredProperty(pd) && !pvs.contains(pd.getName())) {
 						invalidProperties.add(pd.getName());
 					}
 				}
-				// 如果发现属性的set方法标注了@Required 注解，但是属性没有被设置，则抛出异常
 				if (!invalidProperties.isEmpty()) {
 					throw new BeanInitializationException(buildExceptionMessage(invalidProperties, beanName));
 				}

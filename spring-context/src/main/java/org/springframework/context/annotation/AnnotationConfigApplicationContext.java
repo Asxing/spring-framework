@@ -84,9 +84,7 @@ public class AnnotationConfigApplicationContext extends GenericApplicationContex
 	 */
 	public AnnotationConfigApplicationContext(Class<?>... annotatedClasses) {
 		this();
-		// 注册含有注解的类
 		register(annotatedClasses);
-		// 刷新应用程序上下文
 		refresh();
 	}
 
@@ -96,10 +94,8 @@ public class AnnotationConfigApplicationContext extends GenericApplicationContex
 	 * @param basePackages the packages to check for annotated classes
 	 */
 	public AnnotationConfigApplicationContext(String... basePackages) {
-		// 调用无参构造函数
 		this();
 		scan(basePackages);
-		// 刷新应用程序上下文
 		refresh();
 	}
 
