@@ -275,6 +275,7 @@ public class ContextLoader {
 			// Store context in local instance variable, to guarantee that
 			// it is available on ServletContext shutdown.
 			if (this.context == null) {
+				// (1) 创建Spring应用上下文
 				this.context = createWebApplicationContext(servletContext);
 			}
 			if (this.context instanceof ConfigurableWebApplicationContext) {
@@ -288,9 +289,11 @@ public class ContextLoader {
 						ApplicationContext parent = loadParentContext(servletContext);
 						cwac.setParent(parent);
 					}
+					// (2) 配置和刷新Spring应用程序上下文
 					configureAndRefreshWebApplicationContext(cwac, servletContext);
 				}
 			}
+			// (3) 设置 ROOT 路径
 			servletContext.setAttribute(WebApplicationContext.ROOT_WEB_APPLICATION_CONTEXT_ATTRIBUTE, this.context);
 
 			ClassLoader ccl = Thread.currentThread().getContextClassLoader();
@@ -391,9 +394,12 @@ public class ContextLoader {
 			}
 		}
 
+		// (1) 设置ServletContext
 		wac.setServletContext(sc);
+		// (2) 获取xml配置文件
 		String configLocationParam = sc.getInitParameter(CONFIG_LOCATION_PARAM);
 		if (configLocationParam != null) {
+			// (3) 设置ConfigLocation
 			wac.setConfigLocation(configLocationParam);
 		}
 
@@ -406,6 +412,8 @@ public class ContextLoader {
 		}
 
 		customizeContext(sc, wac);
+
+		// 刷新Spring应用程序上下文
 		wac.refresh();
 	}
 

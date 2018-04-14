@@ -97,6 +97,7 @@ public abstract class WebApplicationContextUtils {
 	 */
 	@Nullable
 	public static WebApplicationContext getWebApplicationContext(ServletContext sc) {
+		// (1) 设置 root_web_application_context
 		return getWebApplicationContext(sc, WebApplicationContext.ROOT_WEB_APPLICATION_CONTEXT_ATTRIBUTE);
 	}
 
@@ -109,6 +110,7 @@ public abstract class WebApplicationContextUtils {
 	@Nullable
 	public static WebApplicationContext getWebApplicationContext(ServletContext sc, String attrName) {
 		Assert.notNull(sc, "ServletContext must not be null");
+		// (1) 获取listener 的 context
 		Object attr = sc.getAttribute(attrName);
 		if (attr == null) {
 			return null;

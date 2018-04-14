@@ -496,6 +496,7 @@ public abstract class FrameworkServlet extends HttpServletBean implements Applic
 		long startTime = System.currentTimeMillis();
 
 		try {
+			// (1) 初始化web应用上下文
 			this.webApplicationContext = initWebApplicationContext();
 			initFrameworkServlet();
 		}
@@ -536,8 +537,10 @@ public abstract class FrameworkServlet extends HttpServletBean implements Applic
 					if (cwac.getParent() == null) {
 						// The context instance was injected without an explicit parent -> set
 						// the root application context (if any; may be null) as the parent
+						// (2) 设置 listener 的 Context 为父亲
 						cwac.setParent(rootContext);
 					}
+					// (3) 配置上下文环境、ServletContext、ServletConfig、Namespace、ApplicationListener
 					configureAndRefreshWebApplicationContext(cwac);
 				}
 			}

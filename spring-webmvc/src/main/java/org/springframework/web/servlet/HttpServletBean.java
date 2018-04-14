@@ -169,6 +169,7 @@ public abstract class HttpServletBean extends HttpServlet implements Environment
 		}
 
 		// Let subclasses do whatever initialization they like.
+		// (1)
 		initServletBean();
 
 		if (logger.isDebugEnabled()) {
@@ -194,6 +195,7 @@ public abstract class HttpServletBean extends HttpServlet implements Environment
 	 * <p>This default implementation is empty.
 	 * @throws ServletException if subclass initialization fails
 	 */
+	// (1) 子类初始化
 	protected void initServletBean() throws ServletException {
 	}
 
